@@ -4,3 +4,6 @@ src-tauri/target/
 src-tauri/icons/source-icon.*
 *.db
 .DS_Store
+
+build-logs/
+build-logs.zip
