@@ -1,0 +1,42 @@
+﻿2026-04-03T22:21:09.2880490Z ##[group]Run npm run build
+2026-04-03T22:21:09.2881250Z [36;1mnpm run build[0m
+2026-04-03T22:21:09.2929680Z shell: /bin/bash -e {0}
+2026-04-03T22:21:09.2929950Z env:
+2026-04-03T22:21:09.2930150Z   CARGO_HOME: /Users/runner/.cargo
+2026-04-03T22:21:09.2930490Z   CARGO_INCREMENTAL: 0
+2026-04-03T22:21:09.2930710Z   CARGO_TERM_COLOR: always
+2026-04-03T22:21:09.2930910Z ##[endgroup]
+2026-04-03T22:21:09.4943190Z 
+2026-04-03T22:21:09.5044000Z > content-hub@0.1.0 build
+2026-04-03T22:21:09.5145520Z > tsc && vite build
+2026-04-03T22:21:09.5209910Z 
+2026-04-03T22:21:14.7639890Z [36mvite v5.4.21 [32mbuilding for production...[36m[39m
+2026-04-03T22:21:15.5026810Z transforming...
+2026-04-03T22:21:15.5926470Z node_modules/next-themes/dist/index.module.js (1:1576): A comment
+2026-04-03T22:21:15.6027970Z 
+2026-04-03T22:21:15.6135650Z "/*#__PURE__*/"
+2026-04-03T22:21:15.6254040Z 
+2026-04-03T22:21:15.6355910Z in "node_modules/next-themes/dist/index.module.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+2026-04-03T22:21:15.6451430Z node_modules/next-themes/dist/index.module.js (1:2992): A comment
+2026-04-03T22:21:15.6461200Z 
+2026-04-03T22:21:15.6508590Z "/*#__PURE__*/"
+2026-04-03T22:21:15.6526510Z 
+2026-04-03T22:21:15.6541950Z in "node_modules/next-themes/dist/index.module.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+2026-04-03T22:21:24.2383390Z [32m✓[39m 3100 modules transformed.
+2026-04-03T22:21:24.9278860Z rendering chunks...
+2026-04-03T22:21:25.5358560Z [1m[33m[plugin:vite:reporter][39m[22m [33m[plugin vite:reporter] 
+2026-04-03T22:21:25.5463120Z (!) /Users/runner/work/Content-hub/Content-hub/node_modules/@tauri-apps/api/core.js is dynamically imported by /Users/runner/work/Content-hub/Content-hub/src/components/ReportsPage.tsx but also statically imported by /Users/runner/work/Content-hub/Content-hub/node_modules/@tauri-apps/plugin-dialog/dist-js/index.js, /Users/runner/work/Content-hub/Content-hub/node_modules/@tauri-apps/plugin-http/dist-js/index.js, /Users/runner/work/Content-hub/Content-hub/node_modules/@tauri-apps/plugin-sql/dist-js/index.js, /Users/runner/work/Content-hub/Content-hub/src/components/JobDetail.tsx, dynamic import will not move module into another chunk.
+2026-04-03T22:21:25.5573310Z [39m
+2026-04-03T22:21:25.6389170Z computing gzip size...
+2026-04-03T22:21:25.6946340Z [2mdist/[22m[32mindex.html                          [39m[1m[2m    0.47 kB[22m[1m[22m[2m │ gzip:   0.30 kB[22m
+2026-04-03T22:21:25.7044040Z [2mdist/[22m[2massets/[22m[35mindex-CohN3RdN.css           [39m[1m[2m   29.66 kB[22m[1m[22m[2m │ gzip:   6.11 kB[22m
+2026-04-03T22:21:25.7046470Z [33m
+2026-04-03T22:21:25.7048300Z [2mdist/[22m[2massets/[22m[36mpurify.es-BwoZCkIS.js        [39m[1m[2m   22.03 kB[22m[1m[22m[2m │ gzip:   8.77 kB[22m
+2026-04-03T22:21:25.7051910Z (!) Some chunks are larger than 500 kB after minification. Consider:
+2026-04-03T22:21:25.7054280Z [2mdist/[22m[2massets/[22m[36mindex.es-CTN7Ko8e.js         [39m[1m[2m  150.25 kB[22m[1m[22m[2m │ gzip:  51.42 kB[22m
+2026-04-03T22:21:25.7056970Z - Using dynamic import() to code-split the application
+2026-04-03T22:21:25.7059720Z [2mdist/[22m[2massets/[22m[36mhtml2canvas.esm-CBrSDip1.js  [39m[1m[2m  201.42 kB[22m[1m[22m[2m │ gzip:  48.03 kB[22m
+2026-04-03T22:21:25.7063520Z - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+2026-04-03T22:21:25.7069730Z - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.[39m
+2026-04-03T22:21:25.7072960Z [2mdist/[22m[2massets/[22m[36mindex-BR43XjLX.js            [39m[1m[33m1,326.70 kB[39m[22m[2m │ gzip: 400.14 kB[22m
+2026-04-03T22:21:25.7075350Z [32m✓ built in 10.23s[39m

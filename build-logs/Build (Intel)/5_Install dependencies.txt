@@ -1,0 +1,29 @@
+﻿2026-04-03T22:20:52.8860960Z ##[group]Run npm ci
+2026-04-03T22:20:52.8861200Z [36;1mnpm ci[0m
+2026-04-03T22:20:52.8897980Z shell: /bin/bash -e {0}
+2026-04-03T22:20:52.8898200Z env:
+2026-04-03T22:20:52.8898360Z   CARGO_HOME: /Users/runner/.cargo
+2026-04-03T22:20:52.8898580Z   CARGO_INCREMENTAL: 0
+2026-04-03T22:20:52.8898750Z   CARGO_TERM_COLOR: always
+2026-04-03T22:20:52.8898910Z ##[endgroup]
+2026-04-03T22:20:53.6029300Z npm warn EBADENGINE Unsupported engine {
+2026-04-03T22:20:53.6030800Z npm warn EBADENGINE   package: 'rcedit@5.0.2',
+2026-04-03T22:20:53.6032170Z npm warn EBADENGINE   required: { node: '>= 22.12.0' },
+2026-04-03T22:20:53.6033510Z npm warn EBADENGINE   current: { node: 'v20.20.2', npm: '10.8.2' }
+2026-04-03T22:20:53.6035410Z npm warn EBADENGINE }
+2026-04-03T22:20:56.7757580Z npm warn deprecated rcedit@5.0.2: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
+2026-04-03T22:21:09.8540530Z 
+2026-04-03T22:21:09.8542400Z added 302 packages, and audited 303 packages in 17s
+2026-04-03T22:21:09.8544200Z 
+2026-04-03T22:21:09.8545640Z 39 packages are looking for funding
+2026-04-03T22:21:09.8546180Z   run `npm fund` for details
+2026-04-03T22:21:09.8636570Z 
+2026-04-03T22:21:09.8637400Z 6 vulnerabilities (3 moderate, 2 high, 1 critical)
+2026-04-03T22:21:09.8638060Z 
+2026-04-03T22:21:09.8638380Z To address issues that do not require attention, run:
+2026-04-03T22:21:09.8638780Z   npm audit fix
+2026-04-03T22:21:09.8639060Z 
+2026-04-03T22:21:09.8639310Z To address all issues (including breaking changes), run:
+2026-04-03T22:21:09.8640350Z   npm audit fix --force
+2026-04-03T22:21:09.8640580Z 
+2026-04-03T22:21:09.8640860Z Run `npm audit` for details.

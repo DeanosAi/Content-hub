@@ -1,0 +1,73 @@
+﻿2026-04-03T22:20:45.4325290Z ##[group]Run actions/checkout@v4
+2026-04-03T22:20:45.4326190Z with:
+2026-04-03T22:20:45.4326520Z   repository: DeanosAi/Content-hub
+2026-04-03T22:20:45.4327210Z   token: ***
+2026-04-03T22:20:45.4327510Z   ssh-strict: true
+2026-04-03T22:20:45.4327800Z   ssh-user: git
+2026-04-03T22:20:45.4328100Z   persist-credentials: true
+2026-04-03T22:20:45.4328440Z   clean: true
+2026-04-03T22:20:45.4328730Z   sparse-checkout-cone-mode: true
+2026-04-03T22:20:45.4329100Z   fetch-depth: 1
+2026-04-03T22:20:45.4329380Z   fetch-tags: false
+2026-04-03T22:20:45.4329690Z   show-progress: true
+2026-04-03T22:20:45.4330140Z   lfs: false
+2026-04-03T22:20:45.4330440Z   submodules: false
+2026-04-03T22:20:45.4330750Z   set-safe-directory: true
+2026-04-03T22:20:45.4331400Z ##[endgroup]
+2026-04-03T22:20:45.7759230Z Syncing repository: DeanosAi/Content-hub
+2026-04-03T22:20:45.7763950Z ##[group]Getting Git version info
+2026-04-03T22:20:45.7764910Z Working directory is '/Users/runner/work/Content-hub/Content-hub'
+2026-04-03T22:20:45.7765820Z [command]/opt/homebrew/bin/git version
+2026-04-03T22:20:45.8083240Z git version 2.53.0
+2026-04-03T22:20:45.8145040Z ##[endgroup]
+2026-04-03T22:20:45.8150530Z Copying '/Users/runner/.gitconfig' to '/Users/runner/work/_temp/68d826cc-4b45-40fe-b95d-5993e775e90c/.gitconfig'
+2026-04-03T22:20:45.8151680Z Temporarily overriding HOME='/Users/runner/work/_temp/68d826cc-4b45-40fe-b95d-5993e775e90c' before making global git config changes
+2026-04-03T22:20:45.8152680Z Adding repository directory to the temporary git global config as a safe directory
+2026-04-03T22:20:45.8154740Z [command]/opt/homebrew/bin/git config --global --add safe.directory /Users/runner/work/Content-hub/Content-hub
+2026-04-03T22:20:45.8241090Z Deleting the contents of '/Users/runner/work/Content-hub/Content-hub'
+2026-04-03T22:20:45.8243430Z ##[group]Initializing the repository
+2026-04-03T22:20:45.8248240Z [command]/opt/homebrew/bin/git init /Users/runner/work/Content-hub/Content-hub
+2026-04-03T22:20:45.8514750Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-04-03T22:20:45.8516180Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-04-03T22:20:45.8517160Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-04-03T22:20:45.8518120Z hint: call:
+2026-04-03T22:20:45.8518990Z hint:
+2026-04-03T22:20:45.8519600Z hint: 	git config --global init.defaultBranch <name>
+2026-04-03T22:20:45.8521830Z hint:
+2026-04-03T22:20:45.8535800Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-04-03T22:20:45.8536720Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-04-03T22:20:45.8537440Z hint:
+2026-04-03T22:20:45.8545590Z hint: 	git branch -m <name>
+2026-04-03T22:20:45.8546350Z hint:
+2026-04-03T22:20:45.8547030Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-04-03T22:20:45.8547890Z Initialized empty Git repository in /Users/runner/work/Content-hub/Content-hub/.git/
+2026-04-03T22:20:45.8549400Z [command]/opt/homebrew/bin/git remote add origin https://github.com/DeanosAi/Content-hub
+2026-04-03T22:20:45.8606710Z ##[endgroup]
+2026-04-03T22:20:45.8607420Z ##[group]Disabling automatic garbage collection
+2026-04-03T22:20:45.8609130Z [command]/opt/homebrew/bin/git config --local gc.auto 0
+2026-04-03T22:20:45.8678140Z ##[endgroup]
+2026-04-03T22:20:45.8678910Z ##[group]Setting up auth
+2026-04-03T22:20:45.8685250Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-04-03T22:20:45.8753270Z [command]/opt/homebrew/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-04-03T22:20:46.1194820Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-04-03T22:20:46.1276490Z [command]/opt/homebrew/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-04-03T22:20:46.2681510Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-04-03T22:20:46.2720950Z [command]/opt/homebrew/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-04-03T22:20:46.3784660Z [command]/opt/homebrew/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-04-03T22:20:46.3865620Z ##[endgroup]
+2026-04-03T22:20:46.3867500Z ##[group]Fetching the repository
+2026-04-03T22:20:46.3874370Z [command]/opt/homebrew/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +6896f3190dbca37e15117a1ec01152cdee023654:refs/remotes/origin/master
+2026-04-03T22:20:47.5024540Z From https://github.com/DeanosAi/Content-hub
+2026-04-03T22:20:47.5026480Z  * [new ref]         6896f3190dbca37e15117a1ec01152cdee023654 -> origin/master
+2026-04-03T22:20:47.5132380Z ##[endgroup]
+2026-04-03T22:20:47.5133200Z ##[group]Determining the checkout info
+2026-04-03T22:20:47.5134020Z ##[endgroup]
+2026-04-03T22:20:47.5135920Z [command]/opt/homebrew/bin/git sparse-checkout disable
+2026-04-03T22:20:47.5330800Z [command]/opt/homebrew/bin/git config --local --unset-all extensions.worktreeConfig
+2026-04-03T22:20:47.5425890Z ##[group]Checking out the ref
+2026-04-03T22:20:47.5428510Z [command]/opt/homebrew/bin/git checkout --progress --force -B master refs/remotes/origin/master
+2026-04-03T22:20:47.5842080Z Reset branch 'master'
+2026-04-03T22:20:47.5942860Z branch 'master' set up to track 'origin/master'.
+2026-04-03T22:20:47.5965870Z ##[endgroup]
+2026-04-03T22:20:47.6006220Z [command]/opt/homebrew/bin/git log -1 --format=%H
+2026-04-03T22:20:47.6140220Z 6896f3190dbca37e15117a1ec01152cdee023654

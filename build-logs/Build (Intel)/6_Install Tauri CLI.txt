@@ -1,0 +1,13 @@
+﻿2026-04-03T22:21:09.9092750Z ##[group]Run npm install -g @tauri-apps/cli@2
+2026-04-03T22:21:09.9093270Z [36;1mnpm install -g @tauri-apps/cli@2[0m
+2026-04-03T22:21:09.9129230Z shell: /bin/bash -e {0}
+2026-04-03T22:21:09.9129470Z env:
+2026-04-03T22:21:09.9129730Z   CARGO_HOME: /Users/runner/.cargo
+2026-04-03T22:21:09.9130020Z   CARGO_INCREMENTAL: 0
+2026-04-03T22:21:09.9130230Z   CARGO_TERM_COLOR: always
+2026-04-03T22:21:09.9130440Z ##[endgroup]
+2026-04-03T22:21:11.2551260Z 
+2026-04-03T22:21:11.2552550Z added 2 packages in 1s
+2026-04-03T22:21:11.2553140Z 
+2026-04-03T22:21:11.2553830Z 1 package is looking for funding
+2026-04-03T22:21:11.2555000Z   run `npm fund` for details

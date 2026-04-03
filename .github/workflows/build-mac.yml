@@ -33,15 +33,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Install Tauri CLI
-        run: npm install -g @tauri-apps/cli@2
-
-      - name: Build frontend
-        run: npm run build
-
       - name: Build Tauri app
-        run: cargo tauri build --target ${{ matrix.target }}
-        working-directory: .
+        run: npx tauri build --target ${{ matrix.target }}
 
       - name: Upload DMG
         uses: actions/upload-artifact@v4

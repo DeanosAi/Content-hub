@@ -1,0 +1,392 @@
+﻿2026-04-03T22:20:43.1779870Z Current runner version: '2.333.1'
+2026-04-03T22:20:43.1795010Z ##[group]Runner Image Provisioner
+2026-04-03T22:20:43.1795500Z Hosted Compute Agent
+2026-04-03T22:20:43.1795850Z Version: 20260213.493
+2026-04-03T22:20:43.1796230Z Commit: 5c115507f6dd24b8de37d8bbe0bb4509d0cc0fa3
+2026-04-03T22:20:43.1796670Z Build Date: 2026-02-13T00:28:41Z
+2026-04-03T22:20:43.1797090Z Worker ID: {b7ff09a3-86f4-4764-a994-cf82bc352ace}
+2026-04-03T22:20:43.1797530Z Azure Region: westus
+2026-04-03T22:20:43.1797870Z ##[endgroup]
+2026-04-03T22:20:43.1798770Z ##[group]Operating System
+2026-04-03T22:20:43.1799120Z macOS
+2026-04-03T22:20:43.1799400Z 15.7.4
+2026-04-03T22:20:43.1799670Z 24G517
+2026-04-03T22:20:43.1799950Z ##[endgroup]
+2026-04-03T22:20:43.1800240Z ##[group]Runner Image
+2026-04-03T22:20:43.1800570Z Image: macos-15-arm64
+2026-04-03T22:20:43.1800890Z Version: 20260330.0243.1
+2026-04-03T22:20:43.1801670Z Included Software: https://github.com/actions/runner-images/blob/macos-15-arm64/20260330.0243/images/macos/macos-15-arm64-Readme.md
+2026-04-03T22:20:43.1802670Z Image Release: https://github.com/actions/runner-images/releases/tag/macos-15-arm64%2F20260330.0243
+2026-04-03T22:20:43.1803280Z ##[endgroup]
+2026-04-03T22:20:43.1804060Z ##[group]GITHUB_TOKEN Permissions
+2026-04-03T22:20:43.1805290Z Contents: read
+2026-04-03T22:20:43.1805580Z Metadata: read
+2026-04-03T22:20:43.1805880Z Packages: read
+2026-04-03T22:20:43.1806180Z ##[endgroup]
+2026-04-03T22:20:43.1807540Z Secret source: Actions
+2026-04-03T22:20:43.1807930Z Prepare workflow directory
+2026-04-03T22:20:43.2166170Z Prepare all required actions
+2026-04-03T22:20:43.2200780Z Getting action download info
+2026-04-03T22:20:43.4638250Z Download action repository 'actions/checkout@v4' (SHA:34e114876b0b11c390a56381ad16ebd13914f8d5)
+2026-04-03T22:20:43.8577310Z Download action repository 'actions/setup-node@v4' (SHA:49933ea5288caeca8642d1e84afbd3f7d6820020)
+2026-04-03T22:20:44.1113630Z Download action repository 'dtolnay/rust-toolchain@stable' (SHA:29eef336d9b2848a0b548edc03f92a220660cdb8)
+2026-04-03T22:20:45.0715150Z Download action repository 'actions/upload-artifact@v4' (SHA:ea165f8d65b6e75b540449e92b4886f43607fa02)
+2026-04-03T22:20:45.3812570Z Complete job name: Build (Apple Silicon)
+2026-04-03T22:20:45.4325360Z ##[group]Run actions/checkout@v4
+2026-04-03T22:20:45.4326190Z with:
+2026-04-03T22:20:45.4326520Z   repository: DeanosAi/Content-hub
+2026-04-03T22:20:45.4327220Z   token: ***
+2026-04-03T22:20:45.4327510Z   ssh-strict: true
+2026-04-03T22:20:45.4327810Z   ssh-user: git
+2026-04-03T22:20:45.4328100Z   persist-credentials: true
+2026-04-03T22:20:45.4328440Z   clean: true
+2026-04-03T22:20:45.4328740Z   sparse-checkout-cone-mode: true
+2026-04-03T22:20:45.4329100Z   fetch-depth: 1
+2026-04-03T22:20:45.4329390Z   fetch-tags: false
+2026-04-03T22:20:45.4329690Z   show-progress: true
+2026-04-03T22:20:45.4330150Z   lfs: false
+2026-04-03T22:20:45.4330440Z   submodules: false
+2026-04-03T22:20:45.4330750Z   set-safe-directory: true
+2026-04-03T22:20:45.4331410Z ##[endgroup]
+2026-04-03T22:20:45.7759360Z Syncing repository: DeanosAi/Content-hub
+2026-04-03T22:20:45.7763980Z ##[group]Getting Git version info
+2026-04-03T22:20:45.7764930Z Working directory is '/Users/runner/work/Content-hub/Content-hub'
+2026-04-03T22:20:45.7765930Z [command]/opt/homebrew/bin/git version
+2026-04-03T22:20:45.8083330Z git version 2.53.0
+2026-04-03T22:20:45.8145130Z ##[endgroup]
+2026-04-03T22:20:45.8150540Z Copying '/Users/runner/.gitconfig' to '/Users/runner/work/_temp/68d826cc-4b45-40fe-b95d-5993e775e90c/.gitconfig'
+2026-04-03T22:20:45.8151680Z Temporarily overriding HOME='/Users/runner/work/_temp/68d826cc-4b45-40fe-b95d-5993e775e90c' before making global git config changes
+2026-04-03T22:20:45.8152690Z Adding repository directory to the temporary git global config as a safe directory
+2026-04-03T22:20:45.8154760Z [command]/opt/homebrew/bin/git config --global --add safe.directory /Users/runner/work/Content-hub/Content-hub
+2026-04-03T22:20:45.8241180Z Deleting the contents of '/Users/runner/work/Content-hub/Content-hub'
+2026-04-03T22:20:45.8243440Z ##[group]Initializing the repository
+2026-04-03T22:20:45.8248260Z [command]/opt/homebrew/bin/git init /Users/runner/work/Content-hub/Content-hub
+2026-04-03T22:20:45.8514910Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-04-03T22:20:45.8516190Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-04-03T22:20:45.8517160Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-04-03T22:20:45.8518120Z hint: call:
+2026-04-03T22:20:45.8519000Z hint:
+2026-04-03T22:20:45.8519600Z hint: 	git config --global init.defaultBranch <name>
+2026-04-03T22:20:45.8521910Z hint:
+2026-04-03T22:20:45.8535830Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-04-03T22:20:45.8536720Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-04-03T22:20:45.8537450Z hint:
+2026-04-03T22:20:45.8545630Z hint: 	git branch -m <name>
+2026-04-03T22:20:45.8546360Z hint:
+2026-04-03T22:20:45.8547030Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-04-03T22:20:45.8547900Z Initialized empty Git repository in /Users/runner/work/Content-hub/Content-hub/.git/
+2026-04-03T22:20:45.8549410Z [command]/opt/homebrew/bin/git remote add origin https://github.com/DeanosAi/Content-hub
+2026-04-03T22:20:45.8606780Z ##[endgroup]
+2026-04-03T22:20:45.8607420Z ##[group]Disabling automatic garbage collection
+2026-04-03T22:20:45.8609150Z [command]/opt/homebrew/bin/git config --local gc.auto 0
+2026-04-03T22:20:45.8678230Z ##[endgroup]
+2026-04-03T22:20:45.8678920Z ##[group]Setting up auth
+2026-04-03T22:20:45.8685280Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-04-03T22:20:45.8753380Z [command]/opt/homebrew/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-04-03T22:20:46.1194950Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-04-03T22:20:46.1277950Z [command]/opt/homebrew/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-04-03T22:20:46.2681600Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-04-03T22:20:46.2721070Z [command]/opt/homebrew/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-04-03T22:20:46.3784840Z [command]/opt/homebrew/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-04-03T22:20:46.3865710Z ##[endgroup]
+2026-04-03T22:20:46.3867540Z ##[group]Fetching the repository
+2026-04-03T22:20:46.3874390Z [command]/opt/homebrew/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +6896f3190dbca37e15117a1ec01152cdee023654:refs/remotes/origin/master
+2026-04-03T22:20:47.5024640Z From https://github.com/DeanosAi/Content-hub
+2026-04-03T22:20:47.5026610Z  * [new ref]         6896f3190dbca37e15117a1ec01152cdee023654 -> origin/master
+2026-04-03T22:20:47.5132420Z ##[endgroup]
+2026-04-03T22:20:47.5133210Z ##[group]Determining the checkout info
+2026-04-03T22:20:47.5134020Z ##[endgroup]
+2026-04-03T22:20:47.5135920Z [command]/opt/homebrew/bin/git sparse-checkout disable
+2026-04-03T22:20:47.5330890Z [command]/opt/homebrew/bin/git config --local --unset-all extensions.worktreeConfig
+2026-04-03T22:20:47.5425990Z ##[group]Checking out the ref
+2026-04-03T22:20:47.5428520Z [command]/opt/homebrew/bin/git checkout --progress --force -B master refs/remotes/origin/master
+2026-04-03T22:20:47.5842140Z Reset branch 'master'
+2026-04-03T22:20:47.5942930Z branch 'master' set up to track 'origin/master'.
+2026-04-03T22:20:47.5965970Z ##[endgroup]
+2026-04-03T22:20:47.6006270Z [command]/opt/homebrew/bin/git log -1 --format=%H
+2026-04-03T22:20:47.6140300Z 6896f3190dbca37e15117a1ec01152cdee023654
+2026-04-03T22:20:47.6496760Z ##[group]Run actions/setup-node@v4
+2026-04-03T22:20:47.6497580Z with:
+2026-04-03T22:20:47.6498140Z   node-version: 20
+2026-04-03T22:20:47.6498740Z   cache: npm
+2026-04-03T22:20:47.6499300Z   always-auth: false
+2026-04-03T22:20:47.6499950Z   check-latest: false
+2026-04-03T22:20:47.6500930Z   token: ***
+2026-04-03T22:20:47.6501510Z ##[endgroup]
+2026-04-03T22:20:47.8330700Z Found in cache @ /Users/runner/hostedtoolcache/node/20.20.2/arm64
+2026-04-03T22:20:47.8334550Z ##[group]Environment details
+2026-04-03T22:20:48.6140040Z node: v20.20.2
+2026-04-03T22:20:48.6242230Z npm: 10.8.2
+2026-04-03T22:20:48.6343420Z yarn: 1.22.22
+2026-04-03T22:20:48.6447870Z ##[endgroup]
+2026-04-03T22:20:48.6548660Z [command]/Users/runner/hostedtoolcache/node/20.20.2/arm64/bin/npm config get cache
+2026-04-03T22:20:48.8345390Z /Users/runner/.npm
+2026-04-03T22:20:48.9879390Z npm cache is not found
+2026-04-03T22:20:49.0091550Z ##[group]Run dtolnay/rust-toolchain@stable
+2026-04-03T22:20:49.0091880Z with:
+2026-04-03T22:20:49.0092020Z   targets: aarch64-apple-darwin
+2026-04-03T22:20:49.0092210Z   toolchain: stable
+2026-04-03T22:20:49.0092360Z ##[endgroup]
+2026-04-03T22:20:49.0212250Z ##[group]Run : parse toolchain version
+2026-04-03T22:20:49.0212620Z [36;1m: parse toolchain version[0m
+2026-04-03T22:20:49.0212810Z [36;1mif [[ -z $toolchain ]]; then[0m
+2026-04-03T22:20:49.0213240Z [36;1m  # GitHub does not enforce `required: true` inputs itself. https://github.com/actions/runner/issues/1070[0m
+2026-04-03T22:20:49.0213780Z [36;1m  echo "'toolchain' is a required input" >&2[0m
+2026-04-03T22:20:49.0214060Z [36;1m  exit 1[0m
+2026-04-03T22:20:49.0214330Z [36;1melif [[ $toolchain =~ ^stable' '[0-9]+' '(year|month|week|day)s?' 'ago$ ]]; then[0m
+2026-04-03T22:20:49.0214680Z [36;1m  if [[ macOS == macOS ]]; then[0m
+2026-04-03T22:20:49.0215180Z [36;1m    echo "toolchain=1.$((($(date -v-$(sed 's/stable \([0-9]*\) \(.\).*/\1\2/' <<< $toolchain) +%s)/60/60/24-16569)/7/6))" >> $GITHUB_OUTPUT[0m
+2026-04-03T22:20:49.0215640Z [36;1m  else[0m
+2026-04-03T22:20:49.0216000Z [36;1m    echo "toolchain=1.$((($(date --date "${toolchain#stable }" +%s)/60/60/24-16569)/7/6))" >> $GITHUB_OUTPUT[0m
+2026-04-03T22:20:49.0216500Z [36;1m  fi[0m
+2026-04-03T22:20:49.0216790Z [36;1melif [[ $toolchain =~ ^stable' 'minus' '[0-9]+' 'releases?$ ]]; then[0m
+2026-04-03T22:20:49.0217200Z [36;1m  echo "toolchain=1.$((($(date +%s)/60/60/24-16569)/7/6-${toolchain//[^0-9]/}))" >> $GITHUB_OUTPUT[0m
+2026-04-03T22:20:49.0217620Z [36;1melif [[ $toolchain =~ ^1\.[0-9]+$ ]]; then[0m
+2026-04-03T22:20:49.0218110Z [36;1m  echo "toolchain=1.$((i=${toolchain#1.}, c=($(date +%s)/60/60/24-16569)/7/6, i+9*i*(10*i<=c)+90*i*(100*i<=c)))" >> $GITHUB_OUTPUT[0m
+2026-04-03T22:20:49.0218580Z [36;1melse[0m
+2026-04-03T22:20:49.0218830Z [36;1m  echo "toolchain=$toolchain" >> $GITHUB_OUTPUT[0m
+2026-04-03T22:20:49.0219110Z [36;1mfi[0m
+2026-04-03T22:20:49.0276710Z shell: /bin/bash --noprofile --norc -e -o pipefail {0}
+2026-04-03T22:20:49.0277020Z env:
+2026-04-03T22:20:49.0277210Z   toolchain: stable
+2026-04-03T22:20:49.0277510Z ##[endgroup]
+2026-04-03T22:20:49.0791060Z ##[group]Run : construct rustup command line
+2026-04-03T22:20:49.0791370Z [36;1m: construct rustup command line[0m
+2026-04-03T22:20:49.0791750Z [36;1mecho "targets=$(for t in ${targets//,/ }; do echo -n ' --target' $t; done)" >> $GITHUB_OUTPUT[0m
+2026-04-03T22:20:49.0792280Z [36;1mecho "components=$(for c in ${components//,/ }; do echo -n ' --component' $c; done)" >> $GITHUB_OUTPUT[0m
+2026-04-03T22:20:49.0792660Z [36;1mecho "downgrade=" >> $GITHUB_OUTPUT[0m
+2026-04-03T22:20:49.0830490Z shell: /bin/bash --noprofile --norc -e -o pipefail {0}
+2026-04-03T22:20:49.0830740Z env:
+2026-04-03T22:20:49.0830880Z   targets: aarch64-apple-darwin
+2026-04-03T22:20:49.0831070Z   components: 
+2026-04-03T22:20:49.0831210Z ##[endgroup]
+2026-04-03T22:20:49.1156760Z ##[group]Run : set $CARGO_HOME
+2026-04-03T22:20:49.1157030Z [36;1m: set $CARGO_HOME[0m
+2026-04-03T22:20:49.1157630Z [36;1mecho CARGO_HOME=${CARGO_HOME:-"$HOME/.cargo"} >> $GITHUB_ENV[0m
+2026-04-03T22:20:49.1190470Z shell: /bin/bash --noprofile --norc -e -o pipefail {0}
+2026-04-03T22:20:49.1190710Z ##[endgroup]
+2026-04-03T22:20:49.1486750Z ##[group]Run : install rustup if needed
+2026-04-03T22:20:49.1487120Z [36;1m: install rustup if needed[0m
+2026-04-03T22:20:49.1487330Z [36;1mif ! command -v rustup &>/dev/null; then[0m
+2026-04-03T22:20:49.1487930Z [36;1m  curl --proto '=https' --tlsv1.2 --retry 10 --retry-connrefused --location --silent --show-error --fail https://sh.rustup.rs | sh -s -- --default-toolchain none -y[0m
+2026-04-03T22:20:49.1488480Z [36;1m  echo "$CARGO_HOME/bin" >> $GITHUB_PATH[0m
+2026-04-03T22:20:49.1488680Z [36;1mfi[0m
+2026-04-03T22:20:49.1522530Z shell: /bin/bash --noprofile --norc -e -o pipefail {0}
+2026-04-03T22:20:49.1522760Z env:
+2026-04-03T22:20:49.1522900Z   CARGO_HOME: /Users/runner/.cargo
+2026-04-03T22:20:49.1523530Z ##[endgroup]
+2026-04-03T22:20:49.1823380Z ##[group]Run rustup toolchain install stable --target aarch64-apple-darwin --profile minimal --no-self-update
+2026-04-03T22:20:49.1824000Z [36;1mrustup toolchain install stable --target aarch64-apple-darwin --profile minimal --no-self-update[0m
+2026-04-03T22:20:49.1858650Z shell: /bin/bash --noprofile --norc -e -o pipefail {0}
+2026-04-03T22:20:49.1858900Z env:
+2026-04-03T22:20:49.1859040Z   CARGO_HOME: /Users/runner/.cargo
+2026-04-03T22:20:49.1859220Z   RUSTUP_PERMIT_COPY_RENAME: 1
+2026-04-03T22:20:49.1859380Z ##[endgroup]
+2026-04-03T22:20:49.6013760Z info: syncing channel updates for stable-aarch64-apple-darwin
+2026-04-03T22:20:49.7231600Z info: latest update on 2026-03-26 for version 1.94.1 (e408947bf 2026-03-25)
+2026-04-03T22:20:49.7330820Z info: component rust-std is up to date
+2026-04-03T22:20:49.7337460Z 
+2026-04-03T22:20:49.7430150Z info: self-update is disabled for this build of rustup
+2026-04-03T22:20:49.7430990Z info: any updates to rustup will need to be fetched with your system package manager
+2026-04-03T22:20:49.7431690Z   stable-aarch64-apple-darwin unchanged - rustc 1.94.1 (e408947bf 2026-03-25)
+2026-04-03T22:20:49.7431990Z 
+2026-04-03T22:20:49.7462660Z ##[group]Run rustup default stable
+2026-04-03T22:20:49.7462890Z [36;1mrustup default stable[0m
+2026-04-03T22:20:49.7504550Z shell: /bin/bash --noprofile --norc -e -o pipefail {0}
+2026-04-03T22:20:49.7504830Z env:
+2026-04-03T22:20:49.7505020Z   CARGO_HOME: /Users/runner/.cargo
+2026-04-03T22:20:49.7505210Z ##[endgroup]
+2026-04-03T22:20:49.7890210Z info: using existing install for stable-aarch64-apple-darwin
+2026-04-03T22:20:49.7919410Z info: default toolchain set to stable-aarch64-apple-darwin
+2026-04-03T22:20:49.7919690Z 
+2026-04-03T22:20:49.8006300Z   stable-aarch64-apple-darwin unchanged - rustc 1.94.1 (e408947bf 2026-03-25)
+2026-04-03T22:20:49.8006620Z 
+2026-04-03T22:20:49.8033580Z ##[group]Run : create cachekey
+2026-04-03T22:20:49.8033820Z [36;1m: create cachekey[0m
+2026-04-03T22:20:49.8034240Z [36;1mDATE=$(rustc +stable --version --verbose | sed -ne 's/^commit-date: \(20[0-9][0-9]\)-\([01][0-9]\)-\([0-3][0-9]\)$/\1\2\3/p')[0m
+2026-04-03T22:20:49.8034780Z [36;1mHASH=$(rustc +stable --version --verbose | sed -ne 's/^commit-hash: //p')[0m
+2026-04-03T22:20:49.8035180Z [36;1mecho "cachekey=$(echo $DATE$HASH | head -c12)" >> $GITHUB_OUTPUT[0m
+2026-04-03T22:20:49.8071660Z shell: /bin/bash --noprofile --norc -e -o pipefail {0}
+2026-04-03T22:20:49.8071930Z env:
+2026-04-03T22:20:49.8072070Z   CARGO_HOME: /Users/runner/.cargo
+2026-04-03T22:20:49.8072260Z ##[endgroup]
+2026-04-03T22:20:49.8938180Z ##[group]Run : disable incremental compilation
+2026-04-03T22:20:49.8938550Z [36;1m: disable incremental compilation[0m
+2026-04-03T22:20:49.8938820Z [36;1mif [ -z "${CARGO_INCREMENTAL+set}" ]; then[0m
+2026-04-03T22:20:49.8939250Z [36;1m  echo CARGO_INCREMENTAL=0 >> $GITHUB_ENV[0m
+2026-04-03T22:20:49.8939560Z [36;1mfi[0m
+2026-04-03T22:20:49.8986560Z shell: /bin/bash --noprofile --norc -e -o pipefail {0}
+2026-04-03T22:20:49.8987190Z env:
+2026-04-03T22:20:49.8987330Z   CARGO_HOME: /Users/runner/.cargo
+2026-04-03T22:20:49.8987510Z ##[endgroup]
+2026-04-03T22:20:49.9274420Z ##[group]Run : enable colors in Cargo output
+2026-04-03T22:20:49.9274730Z [36;1m: enable colors in Cargo output[0m
+2026-04-03T22:20:49.9274990Z [36;1mif [ -z "${CARGO_TERM_COLOR+set}" ]; then[0m
+2026-04-03T22:20:49.9275260Z [36;1m  echo CARGO_TERM_COLOR=always >> $GITHUB_ENV[0m
+2026-04-03T22:20:49.9275480Z [36;1mfi[0m
+2026-04-03T22:20:49.9314750Z shell: /bin/bash --noprofile --norc -e -o pipefail {0}
+2026-04-03T22:20:49.9314990Z env:
+2026-04-03T22:20:49.9361010Z   CARGO_HOME: /Users/runner/.cargo
+2026-04-03T22:20:49.9361190Z   CARGO_INCREMENTAL: 0
+2026-04-03T22:20:49.9361330Z ##[endgroup]
+2026-04-03T22:20:49.9655150Z ##[group]Run : enable Cargo sparse registry
+2026-04-03T22:20:49.9655430Z [36;1m: enable Cargo sparse registry[0m
+2026-04-03T22:20:49.9655970Z [36;1m# implemented in 1.66, stabilized in 1.68, made default in 1.70[0m
+2026-04-03T22:20:49.9656580Z [36;1mif [ -z "${CARGO_REGISTRIES_CRATES_IO_PROTOCOL+set}" -o -f "/Users/runner/work/_temp"/.implicit_cargo_registries_crates_io_protocol ]; then[0m
+2026-04-03T22:20:49.9657270Z [36;1m  if rustc +stable --version --verbose | grep -q '^release: 1\.6[89]\.'; then[0m
+2026-04-03T22:20:49.9657730Z [36;1m    touch "/Users/runner/work/_temp"/.implicit_cargo_registries_crates_io_protocol || true[0m
+2026-04-03T22:20:49.9658150Z [36;1m    echo CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse >> $GITHUB_ENV[0m
+2026-04-03T22:20:49.9658540Z [36;1m  elif rustc +stable --version --verbose | grep -q '^release: 1\.6[67]\.'; then[0m
+2026-04-03T22:20:49.9659010Z [36;1m    touch "/Users/runner/work/_temp"/.implicit_cargo_registries_crates_io_protocol || true[0m
+2026-04-03T22:20:49.9659410Z [36;1m    echo CARGO_REGISTRIES_CRATES_IO_PROTOCOL=git >> $GITHUB_ENV[0m
+2026-04-03T22:20:49.9659670Z [36;1m  fi[0m
+2026-04-03T22:20:49.9659830Z [36;1mfi[0m
+2026-04-03T22:20:49.9699810Z shell: /bin/bash --noprofile --norc -e -o pipefail {0}
+2026-04-03T22:20:49.9700080Z env:
+2026-04-03T22:20:49.9700240Z   CARGO_HOME: /Users/runner/.cargo
+2026-04-03T22:20:49.9700430Z   CARGO_INCREMENTAL: 0
+2026-04-03T22:20:49.9700590Z   CARGO_TERM_COLOR: always
+2026-04-03T22:20:49.9700750Z ##[endgroup]
+2026-04-03T22:20:50.1030800Z ##[group]Run : work around spurious network errors in curl 8.0
+2026-04-03T22:20:50.1031180Z [36;1m: work around spurious network errors in curl 8.0[0m
+2026-04-03T22:20:50.1031600Z [36;1m# https://rust-lang.zulipchat.com/#narrow/stream/246057-t-cargo/topic/timeout.20investigation[0m
+2026-04-03T22:20:50.1032090Z [36;1mif rustc +stable --version --verbose | grep -q '^release: 1\.7[01]\.'; then[0m
+2026-04-03T22:20:50.1032450Z [36;1m  echo CARGO_HTTP_MULTIPLEXING=false >> $GITHUB_ENV[0m
+2026-04-03T22:20:50.1032670Z [36;1mfi[0m
+2026-04-03T22:20:50.1075730Z shell: /bin/bash --noprofile --norc -e -o pipefail {0}
+2026-04-03T22:20:50.1075980Z env:
+2026-04-03T22:20:50.1076160Z   CARGO_HOME: /Users/runner/.cargo
+2026-04-03T22:20:50.1076390Z   CARGO_INCREMENTAL: 0
+2026-04-03T22:20:50.1076550Z   CARGO_TERM_COLOR: always
+2026-04-03T22:20:50.1076690Z ##[endgroup]
+2026-04-03T22:20:50.1829590Z ##[group]Run rustc +stable --version --verbose
+2026-04-03T22:20:50.1829950Z [36;1mrustc +stable --version --verbose[0m
+2026-04-03T22:20:50.1867110Z shell: /bin/bash --noprofile --norc -e -o pipefail {0}
+2026-04-03T22:20:50.1867360Z env:
+2026-04-03T22:20:50.1867510Z   CARGO_HOME: /Users/runner/.cargo
+2026-04-03T22:20:50.1867700Z   CARGO_INCREMENTAL: 0
+2026-04-03T22:20:50.1867870Z   CARGO_TERM_COLOR: always
+2026-04-03T22:20:50.1868030Z ##[endgroup]
+2026-04-03T22:20:50.2621820Z rustc 1.94.1 (e408947bf 2026-03-25)
+2026-04-03T22:20:50.2654470Z binary: rustc
+2026-04-03T22:20:50.2660880Z commit-hash: e408947bfd200af42db322daf0fadfe7e26d3bd1
+2026-04-03T22:20:50.2716110Z commit-date: 2026-03-25
+2026-04-03T22:20:50.2758710Z host: aarch64-apple-darwin
+2026-04-03T22:20:50.2770060Z release: 1.94.1
+2026-04-03T22:20:50.2775320Z LLVM version: 21.1.8
+2026-04-03T22:20:50.2880140Z ##[group]Run npm ci
+2026-04-03T22:20:50.2880360Z [36;1mnpm ci[0m
+2026-04-03T22:20:50.2920680Z shell: /bin/bash -e {0}
+2026-04-03T22:20:50.2920860Z env:
+2026-04-03T22:20:50.2921050Z   CARGO_HOME: /Users/runner/.cargo
+2026-04-03T22:20:50.2921230Z   CARGO_INCREMENTAL: 0
+2026-04-03T22:20:50.2921370Z   CARGO_TERM_COLOR: always
+2026-04-03T22:20:50.2921550Z ##[endgroup]
+2026-04-03T22:20:50.8831330Z npm warn EBADENGINE Unsupported engine {
+2026-04-03T22:20:50.8840610Z npm warn EBADENGINE   package: 'rcedit@5.0.2',
+2026-04-03T22:20:50.8844740Z npm warn EBADENGINE   required: { node: '>= 22.12.0' },
+2026-04-03T22:20:50.8853460Z npm warn EBADENGINE   current: { node: 'v20.20.2', npm: '10.8.2' }
+2026-04-03T22:20:50.8879680Z npm warn EBADENGINE }
+2026-04-03T22:20:54.7550730Z npm warn deprecated rcedit@5.0.2: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
+2026-04-03T22:21:07.8336660Z 
+2026-04-03T22:21:07.8346380Z added 302 packages, and audited 303 packages in 17s
+2026-04-03T22:21:07.8447430Z 
+2026-04-03T22:21:07.8471300Z 39 packages are looking for funding
+2026-04-03T22:21:07.8471750Z   run `npm fund` for details
+2026-04-03T22:21:07.8471980Z 
+2026-04-03T22:21:07.8472700Z 6 vulnerabilities (3 moderate, 2 high, 1 critical)
+2026-04-03T22:21:07.8473070Z 
+2026-04-03T22:21:07.8473480Z To address issues that do not require attention, run:
+2026-04-03T22:21:07.8473890Z   npm audit fix
+2026-04-03T22:21:07.8474080Z 
+2026-04-03T22:21:07.8474380Z To address all issues (including breaking changes), run:
+2026-04-03T22:21:07.8474730Z   npm audit fix --force
+2026-04-03T22:21:07.8474950Z 
+2026-04-03T22:21:07.8475120Z Run `npm audit` for details.
+2026-04-03T22:21:07.8663740Z ##[group]Run npm install -g @tauri-apps/cli@2
+2026-04-03T22:21:07.8664030Z [36;1mnpm install -g @tauri-apps/cli@2[0m
+2026-04-03T22:21:07.8750880Z shell: /bin/bash -e {0}
+2026-04-03T22:21:07.8751070Z env:
+2026-04-03T22:21:07.8751380Z   CARGO_HOME: /Users/runner/.cargo
+2026-04-03T22:21:07.8751630Z   CARGO_INCREMENTAL: 0
+2026-04-03T22:21:07.8751880Z   CARGO_TERM_COLOR: always
+2026-04-03T22:21:07.8752110Z ##[endgroup]
+2026-04-03T22:21:09.2731520Z 
+2026-04-03T22:21:09.2832110Z added 2 packages in 1s
+2026-04-03T22:21:09.2844060Z 
+2026-04-03T22:21:09.2844410Z 1 package is looking for funding
+2026-04-03T22:21:09.2844690Z   run `npm fund` for details
+2026-04-03T22:21:09.2880500Z ##[group]Run npm run build
+2026-04-03T22:21:09.2881280Z [36;1mnpm run build[0m
+2026-04-03T22:21:09.2929700Z shell: /bin/bash -e {0}
+2026-04-03T22:21:09.2929950Z env:
+2026-04-03T22:21:09.2930150Z   CARGO_HOME: /Users/runner/.cargo
+2026-04-03T22:21:09.2930490Z   CARGO_INCREMENTAL: 0
+2026-04-03T22:21:09.2930710Z   CARGO_TERM_COLOR: always
+2026-04-03T22:21:09.2930910Z ##[endgroup]
+2026-04-03T22:21:09.4943300Z 
+2026-04-03T22:21:09.5044040Z > content-hub@0.1.0 build
+2026-04-03T22:21:09.5145550Z > tsc && vite build
+2026-04-03T22:21:09.5209950Z 
+2026-04-03T22:21:14.7640070Z [36mvite v5.4.21 [32mbuilding for production...[36m[39m
+2026-04-03T22:21:15.5026880Z transforming...
+2026-04-03T22:21:15.5926550Z node_modules/next-themes/dist/index.module.js (1:1576): A comment
+2026-04-03T22:21:15.6028020Z 
+2026-04-03T22:21:15.6135690Z "/*#__PURE__*/"
+2026-04-03T22:21:15.6254090Z 
+2026-04-03T22:21:15.6356030Z in "node_modules/next-themes/dist/index.module.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+2026-04-03T22:21:15.6451500Z node_modules/next-themes/dist/index.module.js (1:2992): A comment
+2026-04-03T22:21:15.6461240Z 
+2026-04-03T22:21:15.6508650Z "/*#__PURE__*/"
+2026-04-03T22:21:15.6526560Z 
+2026-04-03T22:21:15.6542000Z in "node_modules/next-themes/dist/index.module.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+2026-04-03T22:21:24.2383760Z [32m✓[39m 3100 modules transformed.
+2026-04-03T22:21:24.9278990Z rendering chunks...
+2026-04-03T22:21:25.5358650Z [1m[33m[plugin:vite:reporter][39m[22m [33m[plugin vite:reporter] 
+2026-04-03T22:21:25.5463460Z (!) /Users/runner/work/Content-hub/Content-hub/node_modules/@tauri-apps/api/core.js is dynamically imported by /Users/runner/work/Content-hub/Content-hub/src/components/ReportsPage.tsx but also statically imported by /Users/runner/work/Content-hub/Content-hub/node_modules/@tauri-apps/plugin-dialog/dist-js/index.js, /Users/runner/work/Content-hub/Content-hub/node_modules/@tauri-apps/plugin-http/dist-js/index.js, /Users/runner/work/Content-hub/Content-hub/node_modules/@tauri-apps/plugin-sql/dist-js/index.js, /Users/runner/work/Content-hub/Content-hub/src/components/JobDetail.tsx, dynamic import will not move module into another chunk.
+2026-04-03T22:21:25.5573370Z [39m
+2026-04-03T22:21:25.6389210Z computing gzip size...
+2026-04-03T22:21:25.6946560Z [2mdist/[22m[32mindex.html                          [39m[1m[2m    0.47 kB[22m[1m[22m[2m │ gzip:   0.30 kB[22m
+2026-04-03T22:21:25.7044520Z [2mdist/[22m[2massets/[22m[35mindex-CohN3RdN.css           [39m[1m[2m   29.66 kB[22m[1m[22m[2m │ gzip:   6.11 kB[22m
+2026-04-03T22:21:25.7046490Z [33m
+2026-04-03T22:21:25.7048310Z [2mdist/[22m[2massets/[22m[36mpurify.es-BwoZCkIS.js        [39m[1m[2m   22.03 kB[22m[1m[22m[2m │ gzip:   8.77 kB[22m
+2026-04-03T22:21:25.7051940Z (!) Some chunks are larger than 500 kB after minification. Consider:
+2026-04-03T22:21:25.7054290Z [2mdist/[22m[2massets/[22m[36mindex.es-CTN7Ko8e.js         [39m[1m[2m  150.25 kB[22m[1m[22m[2m │ gzip:  51.42 kB[22m
+2026-04-03T22:21:25.7056980Z - Using dynamic import() to code-split the application
+2026-04-03T22:21:25.7059740Z [2mdist/[22m[2massets/[22m[36mhtml2canvas.esm-CBrSDip1.js  [39m[1m[2m  201.42 kB[22m[1m[22m[2m │ gzip:  48.03 kB[22m
+2026-04-03T22:21:25.7063570Z - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+2026-04-03T22:21:25.7069780Z - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.[39m
+2026-04-03T22:21:25.7072980Z [2mdist/[22m[2massets/[22m[36mindex-BR43XjLX.js            [39m[1m[33m1,326.70 kB[39m[22m[2m │ gzip: 400.14 kB[22m
+2026-04-03T22:21:25.7075370Z [32m✓ built in 10.23s[39m
+2026-04-03T22:21:25.8750650Z ##[group]Run cargo tauri build --target aarch64-apple-darwin
+2026-04-03T22:21:25.8751210Z [36;1mcargo tauri build --target aarch64-apple-darwin[0m
+2026-04-03T22:21:25.9034270Z shell: /bin/bash -e {0}
+2026-04-03T22:21:25.9034730Z env:
+2026-04-03T22:21:25.9034880Z   CARGO_HOME: /Users/runner/.cargo
+2026-04-03T22:21:25.9035160Z   CARGO_INCREMENTAL: 0
+2026-04-03T22:21:25.9035320Z   CARGO_TERM_COLOR: always
+2026-04-03T22:21:25.9035540Z ##[endgroup]
+2026-04-03T22:21:26.2442830Z [1m[91merror[0m: no such command: `tauri`
+2026-04-03T22:21:26.2447620Z 
+2026-04-03T22:21:26.2448530Z help: a command with a similar name exists: `miri`
+2026-04-03T22:21:26.2449470Z 
+2026-04-03T22:21:26.2450120Z help: view all installed commands with `cargo --list`
+2026-04-03T22:21:26.2461170Z help: find a package to install `tauri` with `cargo search cargo-tauri`
+2026-04-03T22:21:26.2568050Z ##[error]Process completed with exit code 101.
+2026-04-03T22:21:26.2776400Z Post job cleanup.
+2026-04-03T22:21:26.8446270Z [command]/opt/homebrew/bin/git version
+2026-04-03T22:21:26.8913930Z git version 2.53.0
+2026-04-03T22:21:26.9033590Z Copying '/Users/runner/.gitconfig' to '/Users/runner/work/_temp/75c2be27-5b43-4691-8698-dcd9f1afe0a2/.gitconfig'
+2026-04-03T22:21:26.9164450Z Temporarily overriding HOME='/Users/runner/work/_temp/75c2be27-5b43-4691-8698-dcd9f1afe0a2' before making global git config changes
+2026-04-03T22:21:26.9287030Z Adding repository directory to the temporary git global config as a safe directory
+2026-04-03T22:21:26.9403030Z [command]/opt/homebrew/bin/git config --global --add safe.directory /Users/runner/work/Content-hub/Content-hub
+2026-04-03T22:21:26.9784570Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-04-03T22:21:27.0229080Z [command]/opt/homebrew/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-04-03T22:21:27.3151960Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-04-03T22:21:27.3252820Z http.https://github.com/.extraheader
+2026-04-03T22:21:27.3572750Z [command]/opt/homebrew/bin/git config --local --unset-all http.https://github.com/.extraheader
+2026-04-03T22:21:27.3888550Z [command]/opt/homebrew/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-04-03T22:21:27.6178350Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-04-03T22:21:27.6481880Z [command]/opt/homebrew/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-04-03T22:21:27.8604480Z Cleaning up orphan processes
+2026-04-03T22:21:28.9740090Z ##[warning]Node.js 20 actions are deprecated. The following actions are running on Node.js 20 and may not work as expected: actions/checkout@v4, actions/setup-node@v4. Actions will be forced to run with Node.js 24 by default starting June 2nd, 2026. Node.js 20 will be removed from the runner on September 16th, 2026. Please check if updated versions of these actions are available that support Node.js 24. To opt into Node.js 24 now, set the FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true environment variable on the runner or in your workflow file. Once Node.js 24 becomes the default, you can temporarily opt out by setting ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
