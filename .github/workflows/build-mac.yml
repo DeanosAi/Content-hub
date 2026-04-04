@@ -36,36 +36,6 @@ jobs:
       - name: Build Tauri app
         run: npx tauri build --target ${{ matrix.target }}
 
-      - name: Ad-hoc sign the .app bundle
-        run: |
-          APP_PATH=$(find src-tauri/target/${{ matrix.target }}/release/bundle/macos -name "*.app" -maxdepth 1 | head -1)
-          echo "Signing: $APP_PATH"
-          codesign --force --deep --sign - "$APP_PATH"
-          codesign --verify --deep --strict "$APP_PATH" && echo "Signature verified OK"
-
-      - name: Remove quarantine and rebuild DMG
-        run: |
-          APP_PATH=$(find src-tauri/target/${{ matrix.target }}/release/bundle/macos -name "*.app" -maxdepth 1 | head -1)
-          APP_NAME=$(basename "$APP_PATH")
-          DMG_DIR="src-tauri/target/${{ matrix.target }}/release/bundle/dmg"
-          
-          # Remove old DMG
-          rm -f "$DMG_DIR"/*.dmg
-          
-          # Create a clean DMG with the signed app
-          TEMP_DIR=$(mktemp -d)
-          cp -R "$APP_PATH" "$TEMP_DIR/"
-          xattr -cr "$TEMP_DIR/$APP_NAME"
-          
-          hdiutil create -volname "Content Hub" \
-            -srcfolder "$TEMP_DIR" \
-            -ov -format UDZO \
-            "$DMG_DIR/Content Hub_0.1.0_${{ matrix.target == 'aarch64-apple-darwin' && 'aarch64' || 'x64' }}.dmg"
-          
-          rm -rf "$TEMP_DIR"
-          echo "DMG created:"
-          ls -la "$DMG_DIR"/*.dmg
-
       - name: Upload DMG
         uses: actions/upload-artifact@v4
         with:
