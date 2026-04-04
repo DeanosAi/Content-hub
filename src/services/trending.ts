@@ -1,5 +1,6 @@
 import { TrendingItem, TrendPost } from '@/types/trending'
 import { fetch as tauriFetch } from '@tauri-apps/plugin-http'
+import { invoke } from '@tauri-apps/api/core'
 import { dbService } from '@/services/database'
 
 let _cachedApifyKey = ''
@@ -12,15 +13,44 @@ async function getApifyKey(): Promise<string> {
   return _cachedApifyKey
 }
 
-// General trending hashtags for broad discovery
+/**
+ * Helper: call Apify via the Rust backend (which has a 120s timeout configured).
+ * Falls back to tauriFetch if the Rust command isn't available.
+ */
+async function apifyFetch(actorId: string, input: Record<string, any>, apifyKey: string): Promise<any[]> {
+  const url = `https://api.apify.com/v2/acts/${actorId}/run-sync-get-dataset-items?token=${apifyKey}&timeout=120`
+  
+  try {
+    // Use Rust backend for reliable timeout handling
+    const result = await invoke<string>('apify_run_actor', {
+      apiKey: apifyKey,
+      actorId,
+      input: JSON.stringify(input),
+    })
+    return JSON.parse(result)
+  } catch (_invokeErr) {
+    // Fallback: use tauriFetch directly (may have shorter timeout)
+    console.warn('Rust apify_run_actor not available, falling back to tauriFetch:', _invokeErr)
+    const response = await tauriFetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    })
+    if (!response.ok) {
+      const errText = await response.text()
+      throw new Error(`Apify API error (${response.status}): ${errText.slice(0, 300)}`)
+    }
+    return await response.json() as any[]
+  }
+}
+
+// Focused hashtags — small set for fast scraping (< 60 seconds)
 const TIKTOK_TARGET_HASHTAGS = [
-  'trending', 'viral', 'fyp', 'foryou', 'foryoupage',
-  'tiktoktrend', 'trendingsound', 'viralvideo'
+  'trending', 'viral', 'fyp'
 ]
 
 const INSTAGRAM_TARGET_HASHTAGS = [
-  'trending', 'viral', 'explore', 'explorepage',
-  'reels', 'reelsinstagram', 'viralreels'
+  'trending', 'viral', 'reels'
 ]
 
 export class TrendingService {
@@ -34,24 +64,16 @@ export class TrendingService {
       
       const apifyKey = await getApifyKey()
       if (!apifyKey) throw new Error('No Apify API key configured. Add it in Settings.')
-      const response = await tauriFetch(
-        'https://api.apify.com/v2/acts/clockworks~free-tiktok-scraper/run-sync-get-dataset-items?token=' + apifyKey,
+      
+      const data: any[] = await apifyFetch(
+        'clockworks~free-tiktok-scraper',
         {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            hashtags: TIKTOK_TARGET_HASHTAGS,
-            resultsPerPage: 50, // Get more posts for better trend detection
-            shouldDownloadVideos: false
-          })
-        }
+          hashtags: TIKTOK_TARGET_HASHTAGS,
+          resultsPerPage: 20,
+          shouldDownloadVideos: false
+        },
+        apifyKey
       )
-      
-      if (!response.ok) {
-        throw new Error(`Apify API error: ${response.status}`)
-      }
-      
-      const data: any[] = await response.json()
       console.log(`Fetched ${data.length} TikTok posts`)
       
       // Process ALL posts - no filtering at this stage
@@ -290,23 +312,15 @@ export class TrendingService {
       
       const apifyKey = await getApifyKey()
       if (!apifyKey) throw new Error('No Apify API key configured. Add it in Settings.')
-      const response = await tauriFetch(
-        'https://api.apify.com/v2/acts/apify~instagram-hashtag-scraper/run-sync-get-dataset-items?token=' + apifyKey,
+      
+      const data: any[] = await apifyFetch(
+        'apify~instagram-hashtag-scraper',
         {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            hashtags: INSTAGRAM_TARGET_HASHTAGS,
-            resultsPerPage: 50
-          })
-        }
+          hashtags: INSTAGRAM_TARGET_HASHTAGS,
+          resultsPerPage: 20
+        },
+        apifyKey
       )
-      
-      if (!response.ok) {
-        throw new Error(`Apify API error: ${response.status}`)
-      }
-      
-      const data: any[] = await response.json()
       console.log(`Fetched ${data.length} Instagram posts`)
       
       // Process ALL posts - no filtering at this stage

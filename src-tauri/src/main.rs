@@ -177,6 +177,30 @@ async fn fetch_metrics_with_ai(url: String, api_key: String) -> Result<MetricsRe
     }
 }
 
+/// Generic Apify actor runner — called from the frontend for trending fetches.
+/// This goes through Rust so we get proper timeout handling (120s).
+#[tauri::command]
+async fn apify_run_actor(api_key: String, actor_id: String, input: String) -> Result<String, String> {
+    if api_key.is_empty() {
+        return Err("No Apify API key configured. Add it in Settings.".to_string());
+    }
+
+    let input_value: serde_json::Value = serde_json::from_str(&input)
+        .map_err(|e| format!("Invalid input JSON: {}", e))?;
+
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(180)) // 3 min — trending scrapes can be slow
+        .build()
+        .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
+
+    let items = run_apify_actor(&client, &api_key, &actor_id, input_value).await?;
+    
+    let json_str = serde_json::to_string(&items)
+        .map_err(|e| format!("Failed to serialize results: {}", e))?;
+
+    Ok(json_str)
+}
+
 #[tauri::command]
 async fn open_file_or_url(path: String) -> Result<(), String> {
     // For URLs, open in default browser. For local paths, open with default app.
@@ -190,7 +214,7 @@ fn main() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_http::init())
-        .invoke_handler(tauri::generate_handler![fetch_metrics_with_ai, open_file_or_url])
+        .invoke_handler(tauri::generate_handler![fetch_metrics_with_ai, open_file_or_url, apify_run_actor])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
