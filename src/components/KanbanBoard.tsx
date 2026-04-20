@@ -1,22 +1,28 @@
 import { useEffect, useState } from 'react'
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd'
-import { Plus, MoreHorizontal, Calendar, Hash } from 'lucide-react'
+import { Plus, MoreHorizontal, Calendar, Hash, Settings, Trash2, Edit3, ArrowLeft, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Job, JobStage } from '@/types'
+import { Input } from '@/components/ui/input'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu'
+import { Job, JobStage, WorkspaceColumn } from '@/types'
 import { useJobStore } from '@/store/jobStore'
 import { JobDetail } from './JobDetail'
 import { NewJobDialog } from './NewJobDialog'
 import { cn } from '@/lib/utils'
 import type { FilterState } from './Dashboard'
-
-const COLUMNS: { id: JobStage; title: string; color: string }[] = [
-  { id: 'brief', title: 'Brief', color: 'bg-slate-500' },
-  { id: 'production', title: 'In Production', color: 'bg-blue-500' },
-  { id: 'ready', title: 'Ready for Posting', color: 'bg-amber-500' },
-  { id: 'posted', title: 'Posted', color: 'bg-emerald-500' },
-  { id: 'archive', title: 'Archive', color: 'bg-gray-600' },
-]
 
 const PLATFORM_COLORS: Record<string, string> = {
   instagram: 'bg-black border border-white/20',
@@ -24,23 +30,63 @@ const PLATFORM_COLORS: Record<string, string> = {
   youtube: 'bg-red-500',
 }
 
+const COLOR_OPTIONS = [
+  { value: 'bg-slate-500', label: 'Slate' },
+  { value: 'bg-gray-500', label: 'Gray' },
+  { value: 'bg-red-500', label: 'Red' },
+  { value: 'bg-orange-500', label: 'Orange' },
+  { value: 'bg-amber-500', label: 'Amber' },
+  { value: 'bg-yellow-500', label: 'Yellow' },
+  { value: 'bg-lime-500', label: 'Lime' },
+  { value: 'bg-green-500', label: 'Green' },
+  { value: 'bg-emerald-500', label: 'Emerald' },
+  { value: 'bg-teal-500', label: 'Teal' },
+  { value: 'bg-cyan-500', label: 'Cyan' },
+  { value: 'bg-sky-500', label: 'Sky' },
+  { value: 'bg-blue-500', label: 'Blue' },
+  { value: 'bg-indigo-500', label: 'Indigo' },
+  { value: 'bg-violet-500', label: 'Violet' },
+  { value: 'bg-purple-500', label: 'Purple' },
+  { value: 'bg-fuchsia-500', label: 'Fuchsia' },
+  { value: 'bg-pink-500', label: 'Pink' },
+  { value: 'bg-rose-500', label: 'Rose' },
+]
+
 interface KanbanBoardProps {
   filters?: FilterState
 }
 
 export function KanbanBoard({ filters }: KanbanBoardProps) {
-  const { jobs, selectedWorkspace, moveJob, loadJobs } = useJobStore()
+  const { 
+    jobs, 
+    selectedWorkspace, 
+    workspaceColumns, 
+    moveJob, 
+    loadJobs, 
+    loadWorkspaceColumns,
+    addWorkspaceColumn,
+    updateWorkspaceColumn,
+    deleteWorkspaceColumn,
+    reorderWorkspaceColumns,
+  } = useJobStore()
   const [mounted, setMounted] = useState(false)
   const [selectedJob, setSelectedJob] = useState<Job | null>(null)
   const [detailOpen, setDetailOpen] = useState(false)
   const [newJobStage, setNewJobStage] = useState<JobStage | null>(null)
+  const [isAddColumnOpen, setIsAddColumnOpen] = useState(false)
+  const [editingColumn, setEditingColumn] = useState<WorkspaceColumn | null>(null)
+  const [newColumnTitle, setNewColumnTitle] = useState('')
+  const [newColumnColor, setNewColumnColor] = useState('bg-blue-500')
 
   useEffect(() => {
     setMounted(true)
     if (selectedWorkspace) {
       loadJobs()
+      loadWorkspaceColumns(selectedWorkspace)
     }
-  }, [selectedWorkspace, loadJobs])
+  }, [selectedWorkspace, loadJobs, loadWorkspaceColumns])
+
+  const sortedColumns = [...workspaceColumns].sort((a, b) => a.sort_order - b.sort_order)
 
   const handleDragEnd = async (result: DropResult) => {
     if (!result.destination) return
@@ -57,47 +103,135 @@ export function KanbanBoard({ filters }: KanbanBoardProps) {
   const handleNewJob = (stage: JobStage) => {
     setNewJobStage(stage)
   }
+  
+  const handleAddColumn = async () => {
+    if (!selectedWorkspace || !newColumnTitle.trim()) return
+    const columnId = `custom-${Date.now()}`
+    await addWorkspaceColumn(selectedWorkspace, columnId, newColumnTitle.trim(), newColumnColor)
+    setNewColumnTitle('')
+    setNewColumnColor('bg-blue-500')
+    setIsAddColumnOpen(false)
+  }
+  
+  const handleUpdateColumn = async () => {
+    if (!editingColumn || !newColumnTitle.trim()) return
+    await updateWorkspaceColumn(editingColumn.id, {
+      title: newColumnTitle.trim(),
+      color: newColumnColor
+    })
+    setEditingColumn(null)
+    setNewColumnTitle('')
+    setNewColumnColor('bg-blue-500')
+  }
+  
+  const openEditColumn = (column: WorkspaceColumn) => {
+    setEditingColumn(column)
+    setNewColumnTitle(column.title)
+    setNewColumnColor(column.color)
+  }
+
+  const moveColumnPosition = async (columnId: number, direction: 'left' | 'right') => {
+    const currentIndex = sortedColumns.findIndex((column) => column.id === columnId)
+    if (currentIndex === -1) return
+
+    const targetIndex = direction === 'left' ? currentIndex - 1 : currentIndex + 1
+    if (targetIndex < 0 || targetIndex >= sortedColumns.length) return
+
+    const reordered = [...sortedColumns]
+    const [movedColumn] = reordered.splice(currentIndex, 1)
+    reordered.splice(targetIndex, 0, movedColumn)
+
+    await reorderWorkspaceColumns(reordered.map((column) => column.id))
+  }
+
+  const getJobPlatforms = (job: Job): string[] => {
+    if (!job.platform) return []
+    if (Array.isArray(job.platform)) return job.platform
+    if (typeof job.platform === 'string') {
+      try {
+        const parsed = JSON.parse(job.platform)
+        return Array.isArray(parsed) ? parsed : [job.platform]
+      } catch {
+        return [job.platform]
+      }
+    }
+    return []
+  }
+
+  const getSearchableText = (job: Job) => {
+    const customFieldText = (job.custom_fields || [])
+      .map((field) => `${field.label} ${field.value}`)
+      .join(' ')
+
+    return [
+      job.title,
+      job.description || '',
+      job.target_hashtags || '',
+      customFieldText,
+      getJobPlatforms(job).join(' '),
+    ].join(' ').toLowerCase()
+  }
 
   const applyFilters = (jobList: Job[]): Job[] => {
-    if (!filters) return jobList
-    return jobList.filter((job) => {
-      // Due date filter
+    const filtered = filters ? jobList.filter((job) => {
       if (filters.dueDateFrom && job.due_date) {
         if (new Date(job.due_date) < new Date(filters.dueDateFrom)) return false
       }
       if (filters.dueDateTo && job.due_date) {
         if (new Date(job.due_date) > new Date(filters.dueDateTo)) return false
       }
-      // If filter is set but job has no due date, exclude it
       if ((filters.dueDateFrom || filters.dueDateTo) && !job.due_date) return false
 
-      // Priority filter
       if (filters.priority !== null && job.priority !== filters.priority) return false
 
-      // Platform filter
       if (filters.platform !== null) {
-        const platforms: string[] = Array.isArray(job.platform)
-          ? job.platform
-          : typeof job.platform === 'string'
-            ? (() => { try { const p = JSON.parse(job.platform as string); return Array.isArray(p) ? p : [job.platform] } catch { return [job.platform] } })()
-            : []
+        const platforms = getJobPlatforms(job)
         if (!platforms.includes(filters.platform)) return false
       }
 
+      if (filters.keyword.trim()) {
+        const keyword = filters.keyword.trim().toLowerCase()
+        if (!getSearchableText(job).includes(keyword)) return false
+      }
+
       return true
+    }) : jobList
+
+    const sortBy = filters?.sortBy || 'default'
+
+    return [...filtered].sort((a, b) => {
+      if (sortBy === 'due_date') {
+        if (a.due_date && b.due_date) {
+          return new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
+        }
+        if (a.due_date) return -1
+        if (b.due_date) return 1
+      }
+
+      if (sortBy === 'platform') {
+        const aPlatform = getJobPlatforms(a)[0] || ''
+        const bPlatform = getJobPlatforms(b)[0] || ''
+        const platformCompare = aPlatform.localeCompare(bPlatform)
+        if (platformCompare !== 0) return platformCompare
+      }
+
+      if (sortBy === 'priority') {
+        if (a.priority !== b.priority) return b.priority - a.priority
+      }
+
+      if (a.priority !== b.priority) return b.priority - a.priority
+      if (a.due_date && b.due_date) {
+        return new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
+      }
+      if (a.due_date) return -1
+      if (b.due_date) return 1
+      return a.title.localeCompare(b.title)
     })
   }
 
   const getJobsByStage = (stage: JobStage) => {
     const stageJobs = jobs.filter((job) => job.stage === stage)
-    const filtered = applyFilters(stageJobs)
-    return filtered.sort((a, b) => {
-      if (a.priority !== b.priority) return b.priority - a.priority
-      if (a.due_date && b.due_date) {
-        return new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
-      }
-      return 0
-    })
+    return applyFilters(stageJobs)
   }
 
   if (!mounted) return null
@@ -106,38 +240,85 @@ export function KanbanBoard({ filters }: KanbanBoardProps) {
     <>
       <DragDropContext onDragEnd={handleDragEnd}>
         <div className="flex gap-4 h-full overflow-x-auto pb-4">
-          {COLUMNS.map((column) => (
-            <div key={column.id} className="flex-1 min-w-[280px] max-w-[400px]">
-              <div className="bg-card rounded-lg border">
+          {sortedColumns.map((column, columnIndex) => (
+            <div key={column.column_id} className="flex-1 min-w-[280px] max-w-[400px]">
+              <div className="bg-card rounded-lg border h-full flex flex-col">
                 <div className="flex items-center justify-between p-3 border-b">
                   <div className="flex items-center gap-2">
                     <div className={cn('w-2 h-2 rounded-full', column.color)} />
                     <h3 className="font-semibold text-sm">{column.title}</h3>
                     <Badge variant="secondary" className="text-xs">
-                      {getJobsByStage(column.id).length}
+                      {getJobsByStage(column.column_id).length}
                     </Badge>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6"
-                    onClick={() => handleNewJob(column.id)}
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                        >
+                          <Settings className="h-3 w-3" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => openEditColumn(column)}>
+                          <Edit3 className="h-4 w-4 mr-2" />
+                          Rename / Color
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => moveColumnPosition(column.id, 'left')}
+                          disabled={columnIndex === 0}
+                        >
+                          <ArrowLeft className="h-4 w-4 mr-2" />
+                          Move Left
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => moveColumnPosition(column.id, 'right')}
+                          disabled={columnIndex === sortedColumns.length - 1}
+                        >
+                          <ArrowRight className="h-4 w-4 mr-2" />
+                          Move Right
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem 
+                          onClick={() => {
+                            if (workspaceColumns.length <= 1) {
+                              alert('You need to keep at least one column in a workspace.')
+                              return
+                            }
+                            deleteWorkspaceColumn(column.id)
+                          }}
+                          className="text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6"
+                      onClick={() => handleNewJob(column.column_id)}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
 
-                <Droppable droppableId={column.id}>
+                <Droppable droppableId={column.column_id}>
                   {(provided, snapshot) => (
                     <div
                       ref={provided.innerRef}
                       {...provided.droppableProps}
                       className={cn(
-                        'p-2 min-h-[200px] space-y-2',
+                        'p-2 min-h-[200px] space-y-2 flex-1',
                         snapshot.isDraggingOver && 'bg-accent/50'
                       )}
                     >
-                      {getJobsByStage(column.id).map((job, index) => (
+                      {getJobsByStage(column.column_id).map((job, index) => (
                         <Draggable key={job.id} draggableId={String(job.id)} index={index}>
                           {(provided, snapshot) => (
                             <div
@@ -172,30 +353,15 @@ export function KanbanBoard({ filters }: KanbanBoardProps) {
                               )}
 
                               <div className="flex items-center gap-2 flex-wrap">
-                                {(() => {
-                                  let platforms: string[] = []
-                                  if (job.platform) {
-                                    if (Array.isArray(job.platform)) {
-                                      platforms = job.platform
-                                    } else if (typeof job.platform === 'string') {
-                                      try {
-                                        const parsed = JSON.parse(job.platform)
-                                        platforms = Array.isArray(parsed) ? parsed : [job.platform]
-                                      } catch {
-                                        platforms = [job.platform]
-                                      }
-                                    }
-                                  }
-                                  return platforms.map((platform) => (
-                                    <Badge
-                                      key={platform}
-                                      variant="secondary"
-                                      className={cn('text-[10px] text-white', PLATFORM_COLORS[platform])}
-                                    >
-                                      {platform}
-                                    </Badge>
-                                  ))
-                                })()}
+                                {getJobPlatforms(job).map((platform) => (
+                                  <Badge
+                                    key={platform}
+                                    variant="secondary"
+                                    className={cn('text-[10px] text-white', PLATFORM_COLORS[platform])}
+                                  >
+                                    {platform}
+                                  </Badge>
+                                ))}
 
                                 {job.due_date && (
                                   <div className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -217,6 +383,22 @@ export function KanbanBoard({ filters }: KanbanBoardProps) {
                                   <span className="truncate">{job.target_hashtags}</span>
                                 </div>
                               )}
+                              
+                              {job.custom_fields && job.custom_fields.length > 0 && (
+                                <div className="mt-2 pt-2 border-t border-dashed space-y-1">
+                                  {job.custom_fields.slice(0, 2).map((field) => (
+                                    <div key={field.id} className="text-[10px] text-muted-foreground truncate">
+                                      <span className="font-medium">{field.label || 'Field'}:</span>{' '}
+                                      {field.type === 'date' && field.value ? new Date(field.value).toLocaleDateString() : field.value}
+                                    </div>
+                                  ))}
+                                  {job.custom_fields.length > 2 && (
+                                    <div className="text-[10px] text-muted-foreground">
+                                      +{job.custom_fields.length - 2} more
+                                    </div>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           )}
                         </Draggable>
@@ -228,6 +410,21 @@ export function KanbanBoard({ filters }: KanbanBoardProps) {
               </div>
             </div>
           ))}
+          
+          <div className="flex-shrink-0 min-w-[200px] max-w-[200px]">
+            <Button
+              variant="outline"
+              className="w-full h-full min-h-[100px] border-dashed"
+              onClick={() => {
+                setNewColumnTitle('')
+                setNewColumnColor('bg-blue-500')
+                setIsAddColumnOpen(true)
+              }}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Column
+            </Button>
+          </div>
         </div>
       </DragDropContext>
 
@@ -244,6 +441,92 @@ export function KanbanBoard({ filters }: KanbanBoardProps) {
           onOpenChange={(open) => !open && setNewJobStage(null)}
         />
       )}
+      
+      <Dialog open={isAddColumnOpen} onOpenChange={setIsAddColumnOpen}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Add New Column</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Column Name</label>
+              <Input
+                value={newColumnTitle}
+                onChange={(e) => setNewColumnTitle(e.target.value)}
+                placeholder="e.g., Review"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Color</label>
+              <div className="grid grid-cols-5 gap-2">
+                {COLOR_OPTIONS.map((color) => (
+                  <button
+                    key={color.value}
+                    onClick={() => setNewColumnColor(color.value)}
+                    className={cn(
+                      'w-8 h-8 rounded-full transition-all',
+                      color.value,
+                      newColumnColor === color.value && 'ring-2 ring-offset-2 ring-primary'
+                    )}
+                    title={color.label}
+                  />
+                ))}
+              </div>
+            </div>
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" onClick={() => setIsAddColumnOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleAddColumn} disabled={!newColumnTitle.trim()}>
+                Add Column
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+      
+      <Dialog open={!!editingColumn} onOpenChange={() => setEditingColumn(null)}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Edit Column</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Column Name</label>
+              <Input
+                value={newColumnTitle}
+                onChange={(e) => setNewColumnTitle(e.target.value)}
+                placeholder="e.g., Review"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Color</label>
+              <div className="grid grid-cols-5 gap-2">
+                {COLOR_OPTIONS.map((color) => (
+                  <button
+                    key={color.value}
+                    onClick={() => setNewColumnColor(color.value)}
+                    className={cn(
+                      'w-8 h-8 rounded-full transition-all',
+                      color.value,
+                      newColumnColor === color.value && 'ring-2 ring-offset-2 ring-primary'
+                    )}
+                    title={color.label}
+                  />
+                ))}
+              </div>
+            </div>
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" onClick={() => setEditingColumn(null)}>
+                Cancel
+              </Button>
+              <Button onClick={handleUpdateColumn} disabled={!newColumnTitle.trim()}>
+                Save Changes
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }

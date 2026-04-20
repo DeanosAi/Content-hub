@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "tauri-dev": "tauri dev",
-    "tauri-build": "tauri build"
+    "tauri-build": "npx tauri build"
   },
   "dependencies": {
     "@hello-pangea/dnd": "^16.6.0",

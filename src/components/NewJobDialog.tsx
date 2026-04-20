@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react'
-import { Upload, X, FileText } from 'lucide-react'
+import { Upload, X, FileText, Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/select'
 import { useJobStore } from '@/store/jobStore'
 import { dbService } from '@/services/database'
-import { JobStage, Platform, FileLink } from '@/types'
+import { JobStage, Platform, FileLink, CustomField, CustomFieldType } from '@/types'
 import { cn } from '@/lib/utils'
 
 interface NewJobDialogProps {
@@ -36,6 +36,19 @@ const PLATFORMS: { value: Platform; label: string; color: string }[] = [
   { value: 'youtube', label: 'YouTube', color: 'bg-red-500' },
 ]
 
+const FIELD_TYPE_OPTIONS: { value: CustomFieldType; label: string }[] = [
+  { value: 'text', label: 'Single line text' },
+  { value: 'textarea', label: 'Text box' },
+  { value: 'date', label: 'Date' },
+]
+
+const createEmptyField = (): CustomField => ({
+  id: crypto.randomUUID(),
+  label: '',
+  type: 'text',
+  value: '',
+})
+
 export function NewJobDialog({ 
   initialStage = 'brief', 
   open: controlledOpen, 
@@ -46,7 +59,7 @@ export function NewJobDialog({
   const open = controlledOpen !== undefined ? controlledOpen : internalOpen
   const setOpen = onOpenChange || setInternalOpen
   
-  const { selectedWorkspace, addJob } = useJobStore()
+  const { selectedWorkspace, workspaceColumns, addJob } = useJobStore()
   const fileInputRef = useRef<HTMLInputElement>(null)
   
   const [title, setTitle] = useState('')
@@ -59,7 +72,18 @@ export function NewJobDialog({
   const [fileLinks, setFileLinks] = useState<FileLink[]>([])
   const [newFileUrl, setNewFileUrl] = useState('')
   const [newFileName, setNewFileName] = useState('')
+  const [customFields, setCustomFields] = useState<CustomField[]>([])
   
+  const availableStages = workspaceColumns.length > 0
+    ? workspaceColumns
+    : [
+        { column_id: 'brief', title: 'Brief' },
+        { column_id: 'production', title: 'In Production' },
+        { column_id: 'ready', title: 'Ready for Posting' },
+        { column_id: 'posted', title: 'Posted' },
+        { column_id: 'archive', title: 'Archive' },
+      ]
+
   const togglePlatform = (platform: Platform) => {
     setSelectedPlatforms(prev => 
       prev.includes(platform)
@@ -70,10 +94,6 @@ export function NewJobDialog({
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log('handleSubmit called')
-    console.log('Database connected:', dbService.isConnected())
-    console.log('Selected workspace:', selectedWorkspace)
-    console.log('Title:', title.trim())
     
     if (!dbService.isConnected()) {
       alert('Database not connected. Please refresh the page.')
@@ -89,6 +109,14 @@ export function NewJobDialog({
       alert('Please enter a job title')
       return
     }
+
+    const cleanedCustomFields = customFields
+      .map((field) => ({
+        ...field,
+        label: field.label.trim(),
+        value: field.value.trim(),
+      }))
+      .filter((field) => field.label || field.value)
     
     try {
       await addJob({
@@ -103,13 +131,12 @@ export function NewJobDialog({
         file_links: fileLinks.length > 0 ? JSON.stringify(fileLinks) : null,
         live_url: null,
         live_metrics: null,
+        custom_fields: cleanedCustomFields.length > 0 ? cleanedCustomFields : null,
       })
-      console.log('Job created successfully')
       
-      // Reset form
       setTitle('')
       setDescription('')
-      setStage('brief')
+      setStage(initialStage)
       setSelectedPlatforms(['instagram'])
       setPriority('0')
       setDueDate('')
@@ -117,6 +144,7 @@ export function NewJobDialog({
       setFileLinks([])
       setNewFileUrl('')
       setNewFileName('')
+      setCustomFields([])
       setOpen(false)
     } catch (error) {
       console.error('Error creating job:', error)
@@ -140,10 +168,23 @@ export function NewJobDialog({
     setFileLinks(fileLinks.filter((_, i) => i !== index))
   }
   
+  const handleAddCustomField = () => {
+    setCustomFields([...customFields, createEmptyField()])
+  }
+  
+  const handleUpdateCustomField = (id: string, updates: Partial<CustomField>) => {
+    setCustomFields(customFields.map(field => 
+      field.id === id ? { ...field, ...updates } : field
+    ))
+  }
+  
+  const handleRemoveCustomField = (id: string) => {
+    setCustomFields(customFields.filter(field => field.id !== id))
+  }
+  
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      // Create a local file URL
       const url = URL.createObjectURL(file)
       setFileLinks([...fileLinks, {
         name: file.name,
@@ -152,9 +193,40 @@ export function NewJobDialog({
       }])
     }
   }
+
+  const renderCustomFieldInput = (field: CustomField) => {
+    if (field.type === 'textarea') {
+      return (
+        <Textarea
+          placeholder="Field value"
+          value={field.value}
+          onChange={(e) => handleUpdateCustomField(field.id, { value: e.target.value })}
+          rows={3}
+        />
+      )
+    }
+
+    if (field.type === 'date') {
+      return (
+        <Input
+          type="date"
+          value={field.value}
+          onChange={(e) => handleUpdateCustomField(field.id, { value: e.target.value })}
+        />
+      )
+    }
+
+    return (
+      <Input
+        placeholder="Field value"
+        value={field.value}
+        onChange={(e) => handleUpdateCustomField(field.id, { value: e.target.value })}
+      />
+    )
+  }
   
   const dialogContent = (
-    <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+    <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
       <DialogHeader>
         <DialogTitle>Create New Job</DialogTitle>
       </DialogHeader>
@@ -180,6 +252,65 @@ export function NewJobDialog({
             rows={3}
           />
         </div>
+
+        <div className="space-y-3 border rounded-lg p-4">
+          <div className="flex items-center justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleAddCustomField}
+            >
+              <Plus className="h-3 w-3 mr-1" />
+              Add Field
+            </Button>
+          </div>
+
+          {customFields.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No extra fields yet. Add one if you want things like Talent, Shoot Date, Notes, Client, or Approval Deadline.
+            </p>
+          ) : (
+            <div className="space-y-4">
+              {customFields.map((field) => (
+                <div key={field.id} className="space-y-3 rounded-md border p-3">
+                  <div className="grid grid-cols-[1fr,180px,auto] gap-2 items-start">
+                    <Input
+                      placeholder="Field name"
+                      value={field.label}
+                      onChange={(e) => handleUpdateCustomField(field.id, { label: e.target.value })}
+                    />
+                    <Select
+                      value={field.type}
+                      onValueChange={(value) => handleUpdateCustomField(field.id, { type: value as CustomFieldType, value: '' })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {FIELD_TYPE_OPTIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-10 w-10"
+                      onClick={() => handleRemoveCustomField(field.id)}
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
+                  {renderCustomFieldInput(field)}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
         
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
@@ -189,11 +320,11 @@ export function NewJobDialog({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="brief">Brief</SelectItem>
-                <SelectItem value="production">In Production</SelectItem>
-                <SelectItem value="ready">Ready for Posting</SelectItem>
-                <SelectItem value="posted">Posted</SelectItem>
-                <SelectItem value="archive">Archive</SelectItem>
+                {availableStages.map((column) => (
+                  <SelectItem key={column.column_id} value={column.column_id}>
+                    {column.title}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -213,7 +344,6 @@ export function NewJobDialog({
           </div>
         </div>
         
-        {/* Multi-select Platforms */}
         <div className="space-y-2">
           <Label>Platforms</Label>
           <div className="flex gap-2 flex-wrap">
@@ -258,11 +388,9 @@ export function NewJobDialog({
           />
         </div>
         
-        {/* File Attachments */}
         <div className="space-y-3 border rounded-lg p-4">
           <Label>File Attachments</Label>
           
-          {/* Existing file links */}
           {fileLinks.length > 0 && (
             <div className="space-y-2">
               {fileLinks.map((file, index) => (
@@ -285,7 +413,6 @@ export function NewJobDialog({
             </div>
           )}
           
-          {/* Add file link */}
           <div className="space-y-2">
             <div className="grid grid-cols-[1fr,auto] gap-2">
               <Input
@@ -297,7 +424,7 @@ export function NewJobDialog({
                 type="button"
                 variant="outline"
                 onClick={handleAddFileLink}
-                disabled={!newFileUrl.trim()}
+                disabled={!newFileUrl.trim() || !newFileName.trim()}
               >
                 Add Link
               </Button>
@@ -309,7 +436,6 @@ export function NewJobDialog({
             />
           </div>
           
-          {/* Upload local file */}
           <div className="flex items-center gap-2">
             <input
               type="file"

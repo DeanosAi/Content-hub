@@ -7,8 +7,16 @@ export interface Workspace {
   is_active: boolean
 }
 
-export type JobStage = 'brief' | 'production' | 'ready' | 'posted' | 'archive'
+export type JobStage = string // Now dynamic based on workspace columns
 export type Platform = 'instagram' | 'tiktok' | 'youtube'
+export type CustomFieldType = 'text' | 'textarea' | 'date'
+
+export interface CustomField {
+  id: string
+  label: string
+  type: CustomFieldType
+  value: string
+}
 
 export interface Job {
   id: number
@@ -30,8 +38,20 @@ export interface Job {
     engagement_rate: number
     last_updated: string
   } | null // AI-populated metrics from live post
+  custom_fields: CustomField[] | null
   created_at: string
   updated_at: string
+}
+
+export interface WorkspaceColumn {
+  id: number
+  workspace_id: number
+  column_id: string
+  title: string
+  color: string
+  sort_order: number
+  is_default: boolean
+  created_at: string
 }
 
 export interface FileLink {

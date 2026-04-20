@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { Calendar, Hash, Link, Trash2, Copy, ExternalLink } from 'lucide-react'
+import { Calendar, Hash, Link, Trash2, Copy, ExternalLink, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Sheet,
@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { Job, JobStage, Platform } from '@/types'
+import { Job, JobStage, Platform, CustomField, CustomFieldType } from '@/types'
 import { useJobStore } from '@/store/jobStore'
 import { dbService } from '@/services/database'
 import { cn } from '@/lib/utils'
@@ -38,30 +38,84 @@ const STAGE_OPTIONS: { value: JobStage; label: string; color: string }[] = [
   { value: 'archive', label: 'Archive', color: 'bg-gray-600' },
 ]
 
+const FIELD_TYPE_OPTIONS: { value: CustomFieldType; label: string }[] = [
+  { value: 'text', label: 'Single line text' },
+  { value: 'textarea', label: 'Text box' },
+  { value: 'date', label: 'Date' },
+]
+
+const createEmptyField = (): CustomField => ({
+  id: crypto.randomUUID(),
+  label: '',
+  type: 'text',
+  value: '',
+})
+
 export function JobDetail({ job: jobProp, open, onOpenChange }: JobDetailProps) {
-  const { updateJob, deleteJob, moveJob, jobs, workspaces, addJob } = useJobStore()
+  const { updateJob, deleteJob, moveJob, jobs, workspaces, workspaceColumns, addJob } = useJobStore()
   const [isEditing, setIsEditing] = useState(false)
   const [isFetchingMetrics, setIsFetchingMetrics] = useState(false)
   const [showCopyMenu, setShowCopyMenu] = useState(false)
   
   const [editedJob, setEditedJob] = useState<Partial<Job>>({})
   
-  // Always use the latest version of the job from the store (fixes stale data after metrics fetch)
   const job = useMemo(() => {
     if (!jobProp) return null
     return jobs.find(j => j.id === jobProp.id) || jobProp
   }, [jobProp, jobs])
   
   if (!job) return null
+
+  const availableStages = workspaceColumns.length > 0
+    ? workspaceColumns.map((column) => ({
+        value: column.column_id,
+        label: column.title,
+        color: column.color,
+      }))
+    : STAGE_OPTIONS
   
   const handleEdit = () => {
-    setEditedJob({ ...job })
+    setEditedJob({ ...job, custom_fields: job.custom_fields ? [...job.custom_fields] : [] })
     setIsEditing(true)
   }
   
   const handleSave = async () => {
-    await updateJob(job.id, editedJob)
+    const cleanedFields = (editedJob.custom_fields || [])
+      .map((field) => ({
+        ...field,
+        label: field.label.trim(),
+        value: field.value.trim(),
+      }))
+      .filter((field) => field.label || field.value)
+
+    await updateJob(job.id, {
+      ...editedJob,
+      custom_fields: cleanedFields,
+    })
     setIsEditing(false)
+  }
+  
+  const handleAddCustomField = () => {
+    const currentFields = editedJob.custom_fields || job.custom_fields || []
+    setEditedJob({ ...editedJob, custom_fields: [...currentFields, createEmptyField()] })
+  }
+  
+  const handleUpdateCustomField = (id: string, updates: Partial<CustomField>) => {
+    const currentFields = editedJob.custom_fields || job.custom_fields || []
+    setEditedJob({
+      ...editedJob,
+      custom_fields: currentFields.map(field => 
+        field.id === id ? { ...field, ...updates } : field
+      )
+    })
+  }
+  
+  const handleRemoveCustomField = (id: string) => {
+    const currentFields = editedJob.custom_fields || job.custom_fields || []
+    setEditedJob({
+      ...editedJob,
+      custom_fields: currentFields.filter(field => field.id !== id)
+    })
   }
   
   const handleDelete = async () => {
@@ -80,7 +134,6 @@ export function JobDetail({ job: jobProp, open, onOpenChange }: JobDetailProps) 
     
     setIsFetchingMetrics(true)
     try {
-      // Get Apify API key from settings
       const apiKeys = await dbService.getSettings('api_keys') || {}
       const apifyKey = apiKeys?.apify || ''
       
@@ -90,13 +143,11 @@ export function JobDetail({ job: jobProp, open, onOpenChange }: JobDetailProps) 
         return
       }
       
-      // Call Tauri command to fetch metrics via Apify scraper
       const metrics = await invoke('fetch_metrics_with_ai', {
         url: job.live_url,
         apiKey: apifyKey
       }) as { views: number; likes: number; comments: number; shares: number; engagement_rate: number }
       
-      // Update job with live metrics
       await updateJob(job.id, {
         live_metrics: {
           views: metrics.views || 0,
@@ -117,10 +168,52 @@ export function JobDetail({ job: jobProp, open, onOpenChange }: JobDetailProps) 
   }
   
   const displayJob = isEditing ? editedJob : job
+
+  const renderFieldValue = (field: CustomField) => {
+    if (field.type === 'date' && field.value) {
+      try {
+        return new Date(field.value).toLocaleDateString()
+      } catch {
+        return field.value
+      }
+    }
+    return field.value || '—'
+  }
+
+  const renderCustomFieldInput = (field: CustomField) => {
+    if (field.type === 'textarea') {
+      return (
+        <Textarea
+          value={field.value}
+          onChange={(e) => handleUpdateCustomField(field.id, { value: e.target.value })}
+          placeholder="Field value"
+          rows={3}
+        />
+      )
+    }
+
+    if (field.type === 'date') {
+      return (
+        <Input
+          type="date"
+          value={field.value}
+          onChange={(e) => handleUpdateCustomField(field.id, { value: e.target.value })}
+        />
+      )
+    }
+
+    return (
+      <Input
+        value={field.value}
+        onChange={(e) => handleUpdateCustomField(field.id, { value: e.target.value })}
+        placeholder="Field value"
+      />
+    )
+  }
   
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-[400px] sm:w-[540px]">
+      <SheetContent className="w-[400px] sm:w-[540px] overflow-y-auto">
         <SheetHeader>
           <div className="flex items-center justify-between">
             <SheetTitle className="text-xl">{job.title}</SheetTitle>
@@ -149,7 +242,6 @@ export function JobDetail({ job: jobProp, open, onOpenChange }: JobDetailProps) 
         </SheetHeader>
         
         <div className="mt-6 space-y-6">
-          {/* Stage */}
           <div className="space-y-2">
             <Label>Stage</Label>
             <Select 
@@ -160,7 +252,7 @@ export function JobDetail({ job: jobProp, open, onOpenChange }: JobDetailProps) 
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {STAGE_OPTIONS.map((stage) => (
+                {availableStages.map((stage) => (
                   <SelectItem key={stage.value} value={stage.value}>
                     <div className="flex items-center gap-2">
                       <div className={cn('w-2 h-2 rounded-full', stage.color)} />
@@ -172,7 +264,6 @@ export function JobDetail({ job: jobProp, open, onOpenChange }: JobDetailProps) 
             </Select>
           </div>
           
-          {/* Description */}
           <div className="space-y-2">
             <Label>Description</Label>
             {isEditing ? (
@@ -188,7 +279,6 @@ export function JobDetail({ job: jobProp, open, onOpenChange }: JobDetailProps) 
             )}
           </div>
           
-          {/* Platform & Priority */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Platform</Label>
@@ -219,7 +309,6 @@ export function JobDetail({ job: jobProp, open, onOpenChange }: JobDetailProps) 
               ) : (
                 <div className="flex gap-1 flex-wrap">
                   {(() => {
-                    // Handle both old string format and new array format
                     let platforms: string[] = []
                     if (job.platform) {
                       if (Array.isArray(job.platform)) {
@@ -269,7 +358,6 @@ export function JobDetail({ job: jobProp, open, onOpenChange }: JobDetailProps) 
             </div>
           </div>
           
-          {/* Due Date */}
           <div className="space-y-2">
             <Label>Due Date</Label>
             {isEditing ? (
@@ -288,7 +376,6 @@ export function JobDetail({ job: jobProp, open, onOpenChange }: JobDetailProps) 
             )}
           </div>
           
-          {/* Hashtags */}
           <div className="space-y-2">
             <Label>Target Hashtags</Label>
             {isEditing ? (
@@ -307,7 +394,6 @@ export function JobDetail({ job: jobProp, open, onOpenChange }: JobDetailProps) 
             )}
           </div>
           
-          {/* File Links */}
           <div className="space-y-2">
             <Label>File Links</Label>
             {job.file_links ? (
@@ -335,7 +421,72 @@ export function JobDetail({ job: jobProp, open, onOpenChange }: JobDetailProps) 
             )}
           </div>
           
-          {/* Live URL - Only show for Posted stage */}
+          <div className="space-y-3 pt-4 border-t">
+            <div className="flex items-center justify-end">
+              {isEditing && (
+                <Button variant="outline" size="sm" onClick={handleAddCustomField}>
+                  <Plus className="h-3 w-3 mr-1" />
+                  Add Field
+                </Button>
+              )}
+            </div>
+            {isEditing ? (
+              <div className="space-y-3">
+                {(editedJob.custom_fields || []).map((field) => (
+                  <div key={field.id} className="space-y-3 rounded-md border p-3">
+                    <div className="grid grid-cols-[1fr,180px,auto] gap-2 items-start">
+                      <Input
+                        value={field.label}
+                        onChange={(e) => handleUpdateCustomField(field.id, { label: e.target.value })}
+                        placeholder="Field name"
+                      />
+                      <Select
+                        value={field.type}
+                        onValueChange={(value) => handleUpdateCustomField(field.id, { type: value as CustomFieldType, value: '' })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {FIELD_TYPE_OPTIONS.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-10 w-10"
+                        onClick={() => handleRemoveCustomField(field.id)}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
+                    {renderCustomFieldInput(field)}
+                  </div>
+                ))}
+                {(editedJob.custom_fields || []).length === 0 && (
+                  <p className="text-sm text-muted-foreground">No extra fields yet.</p>
+                )}
+              </div>
+            ) : (
+              (job.custom_fields || []).length > 0 ? (
+                <div className="space-y-2">
+                  {job.custom_fields!.map((field) => (
+                    <div key={field.id} className="flex items-start justify-between gap-4 text-sm">
+                      <span className="text-muted-foreground">{field.label || 'Untitled field'}:</span>
+                      <span className="font-medium text-right">{renderFieldValue(field)}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">No extra fields</p>
+              )
+            )}
+          </div>
+          
           {job.stage === 'posted' && (
             <div className="space-y-2 pt-4 border-t">
               <Label>Live Post URL</Label>
@@ -381,7 +532,6 @@ export function JobDetail({ job: jobProp, open, onOpenChange }: JobDetailProps) 
                     </div>
                   </div>
                   
-                  {/* Metrics Fetch Button */}
                   <Button 
                     variant="outline" 
                     size="sm"
@@ -392,7 +542,6 @@ export function JobDetail({ job: jobProp, open, onOpenChange }: JobDetailProps) 
                     {isFetchingMetrics ? 'Scraping live data...' : 'Fetch Live Metrics'}
                   </Button>
                   
-                  {/* Display Live Metrics if available */}
                   {job.live_metrics && (
                     <div className="mt-3 p-3 bg-muted rounded-md space-y-1">
                       <p className="text-xs font-medium text-muted-foreground">Live Metrics</p>
@@ -424,7 +573,6 @@ export function JobDetail({ job: jobProp, open, onOpenChange }: JobDetailProps) 
             </div>
           )}
           
-          {/* Copy to Workspace */}
           <div className="pt-4 border-t relative">
             <Button variant="outline" className="w-full" onClick={() => setShowCopyMenu(!showCopyMenu)}>
               <Copy className="h-4 w-4 mr-2" />
@@ -453,6 +601,7 @@ export function JobDetail({ job: jobProp, open, onOpenChange }: JobDetailProps) 
                             file_links: job.file_links,
                             live_url: null,
                             live_metrics: null,
+                            custom_fields: job.custom_fields,
                           })
                           setShowCopyMenu(false)
                           alert(`Copied to "${w.name}" → ${job.stage}`)
