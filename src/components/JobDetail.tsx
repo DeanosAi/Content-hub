@@ -422,7 +422,8 @@ export function JobDetail({ job: jobProp, open, onOpenChange }: JobDetailProps) 
           </div>
           
           <div className="space-y-3 pt-4 border-t">
-            <div className="flex items-center justify-end">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium">Additional Info</p>
               {isEditing && (
                 <Button variant="outline" size="sm" onClick={handleAddCustomField}>
                   <Plus className="h-3 w-3 mr-1" />

@@ -219,6 +219,9 @@ export function KanbanBoard({ filters }: KanbanBoardProps) {
         if (a.priority !== b.priority) return b.priority - a.priority
       }
 
+      const createdDiff = new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      if (createdDiff !== 0) return createdDiff
+
       if (a.priority !== b.priority) return b.priority - a.priority
       if (a.due_date && b.due_date) {
         return new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
@@ -283,12 +286,13 @@ export function KanbanBoard({ filters }: KanbanBoardProps) {
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem 
-                          onClick={() => {
+                          onSelect={(event) => {
+                            event.preventDefault()
                             if (workspaceColumns.length <= 1) {
                               alert('You need to keep at least one column in a workspace.')
                               return
                             }
-                            deleteWorkspaceColumn(column.id)
+                            void deleteWorkspaceColumn(column.id)
                           }}
                           className="text-destructive"
                         >

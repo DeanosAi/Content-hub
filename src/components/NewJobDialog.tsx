@@ -267,9 +267,12 @@ export function NewJobDialog({
           </div>
 
           {customFields.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No extra fields yet. Add one if you want things like Talent, Shoot Date, Notes, Client, or Approval Deadline.
-            </p>
+            <div className="space-y-1">
+              <p className="text-sm font-medium">Additional Info</p>
+              <p className="text-sm text-muted-foreground">
+                No extra fields yet. Add one if you want things like Talent, Shoot Date, Notes, Client, or Approval Deadline.
+              </p>
+            </div>
           ) : (
             <div className="space-y-4">
               {customFields.map((field) => (
