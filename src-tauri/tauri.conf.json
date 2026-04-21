@@ -2,7 +2,7 @@
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Content Hub",
   "version": "0.1.0",
-  "identifier": "com.contenthub.app",
+  "identifier": "com.contenthub.desktop",
   "build": {
     "beforeDevCommand": "npm run dev",
     "beforeBuildCommand": "npm run build",
