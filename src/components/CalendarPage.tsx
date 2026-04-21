@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { importCalendarEventsWithKimi } from '@/services/calendarAi'
+import { dbService } from '@/services/database'
 
 const VIEW_OPTIONS: { value: CalendarView; label: string }[] = [
   { value: 'week', label: 'Week' },
@@ -379,7 +380,7 @@ export function CalendarPage() {
     setImportSummary('')
 
     try {
-      const apiKeys = await import('@/services/database').then((m) => m.dbService.getApiKeys())
+      const apiKeys = await dbService.getApiKeys()
       const result = await importCalendarEventsWithKimi(importPrompt.trim(), apiKeys.moonshot)
       setImportPreview(result.events || [])
       setImportSummary(result.warnings?.join(' ') || '')
