@@ -5,6 +5,7 @@ import { Dashboard } from './components/Dashboard'
 import { SettingsPage } from './components/SettingsPage'
 import { ReportsPage } from './components/ReportsPage'
 import { TrendingPage } from './components/TrendingPage'
+import { CalendarPage } from './components/CalendarPage'
 import { useJobStore } from './store/jobStore'
 import { dbService } from './services/database'
 
@@ -107,6 +108,7 @@ function App() {
       <Sidebar currentView={currentView} onViewChange={setCurrentView} />
       <main className="flex-1 overflow-hidden">
         {currentView === 'dashboard' && <Dashboard />}
+        {currentView === 'calendar' && <CalendarPage />}
         {currentView === 'settings' && <SettingsPage />}
         {currentView === 'reports' && <ReportsPage />}
         {currentView === 'trending' && <TrendingPage />}

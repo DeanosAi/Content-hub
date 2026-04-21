@@ -10,6 +10,7 @@ export interface Workspace {
 export type JobStage = string // Now dynamic based on workspace columns
 export type Platform = 'instagram' | 'tiktok' | 'youtube'
 export type CustomFieldType = 'text' | 'textarea' | 'date'
+export type CalendarView = 'week' | 'month' | 'year'
 
 export interface CustomField {
   id: string
@@ -29,7 +30,7 @@ export interface Job {
   platform: Platform[] | null
   target_hashtags: string | null
   file_links: string | null
-  live_url: string | null // URL to posted content
+  live_url: string | null
   live_metrics: {
     views: number
     likes: number
@@ -37,7 +38,7 @@ export interface Job {
     shares: number
     engagement_rate: number
     last_updated: string
-  } | null // AI-populated metrics from live post
+  } | null
   custom_fields: CustomField[] | null
   created_at: string
   updated_at: string
@@ -70,7 +71,48 @@ export interface Template {
   created_at: string
 }
 
-// Performance Metrics for Phase 4
+export type CalendarRecurrence = 'none' | 'day' | 'week' | 'fortnight' | 'month' | 'year'
+
+export interface CalendarEvent {
+  id: number
+  workspace_id: number | null
+  title: string
+  description: string | null
+  event_date: string
+  end_date: string | null
+  start_time: string | null
+  end_time: string | null
+  category: string | null
+  location: string | null
+  color: string | null
+  recurrence: CalendarRecurrence
+  source: 'manual' | 'seeded' | 'ai'
+  external_url: string | null
+  linked_job_id: number | null
+  metadata_json: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface CalendarImportItem {
+  title: string
+  description?: string | null
+  event_date: string
+  end_date?: string | null
+  start_time?: string | null
+  end_time?: string | null
+  category?: string | null
+  location?: string | null
+  external_url?: string | null
+}
+
+export interface EventMonthlyReport {
+  monthKey: string
+  title: string
+  summary: string
+  events: CalendarEvent[]
+}
+
 export interface PerformanceMetrics {
   id: number
   job_id: number

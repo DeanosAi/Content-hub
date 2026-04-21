@@ -88,6 +88,7 @@ export function TrendingPage() {
       file_links: null,
       live_url: null,
       live_metrics: null,
+      custom_fields: null,
     })
     
     alert(`Job created from trend: ${trendName}`)

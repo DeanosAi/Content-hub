@@ -4,10 +4,10 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Calendar, FileText, Download, TrendingUp, BarChart3, Check, AlertCircle, RefreshCw, Eye, Heart, MessageSquare } from 'lucide-react'
+import { Calendar, FileText, Download, TrendingUp, BarChart3, Check, AlertCircle, RefreshCw, Eye, Heart, MessageSquare, Sparkles, Clock3, Briefcase } from 'lucide-react'
 import { useJobStore } from '@/store/jobStore'
 import { dbService } from '@/services/database'
-import { Job, Platform } from '@/types'
+import { CalendarEvent, Job, Platform } from '@/types'
 import { format } from 'date-fns'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
@@ -40,16 +40,16 @@ export function ReportsPage() {
   const [isUpdating, setIsUpdating] = useState(false)
   const [updateProgress, setUpdateProgress] = useState('')
   const [allJobs, setAllJobs] = useState<Job[]>([])
-  // Charts state
   const [compareWorkspace, setCompareWorkspace] = useState<number | null>(null)
   const [compareJobs, setCompareJobs] = useState<Job[]>([])
+  const [monthlyEvents, setMonthlyEvents] = useState<CalendarEvent[]>([])
+  const [savedReports, setSavedReports] = useState<any[]>([])
 
   const showToast = (message: string, type: ToastType = 'success') => {
     setToast({ message, type })
     setTimeout(() => setToast(null), 4000)
   }
 
-  // Load jobs for the selected report workspace
   useEffect(() => {
     const loadReportJobs = async () => {
       const wsId = reportWorkspace ?? selectedWorkspace
@@ -60,9 +60,8 @@ export function ReportsPage() {
       } catch (e) { console.error(e) }
     }
     loadReportJobs()
-  }, [reportWorkspace, selectedWorkspace, jobs]) // re-run when main jobs change too
+  }, [reportWorkspace, selectedWorkspace, jobs])
 
-  // Load compare workspace jobs
   useEffect(() => {
     const loadCompare = async () => {
       if (!compareWorkspace) { setCompareJobs([]); return }
@@ -77,13 +76,31 @@ export function ReportsPage() {
   const activeWsId = reportWorkspace ?? selectedWorkspace
   const currentWorkspace = workspaces.find(w => w.id === activeWsId)
 
-  // Filter posted/archived jobs with live_metrics, within date range
+  useEffect(() => {
+    const loadAutomationData = async () => {
+      try {
+        const now = new Date()
+        const start = format(new Date(now.getFullYear(), now.getMonth(), 1), 'yyyy-MM-dd')
+        const end = format(new Date(now.getFullYear(), now.getMonth() + 1, 0), 'yyyy-MM-dd')
+        const [events, reports] = await Promise.all([
+          dbService.getCalendarEvents(activeWsId ?? undefined, start, end),
+          activeWsId ? dbService.getReports(activeWsId) : Promise.resolve([])
+        ])
+        setMonthlyEvents(events)
+        setSavedReports(reports)
+      } catch (error) {
+        console.error('Failed to load report automation data:', error)
+      }
+    }
+
+    loadAutomationData()
+  }, [activeWsId])
+
   const metricsData: PostMetric[] = useMemo(() => {
     return allJobs
       .filter(j => (j.stage === 'posted' || j.stage === 'archive') && j.live_metrics)
       .filter(j => {
         if (!dateRange.start && !dateRange.end) return true
-        // Use live_metrics.last_updated or job created_at as the date reference
         const jobDate = j.live_metrics?.last_updated || j.created_at
         if (!jobDate) return true
         const d = new Date(jobDate)
@@ -105,7 +122,6 @@ export function ReportsPage() {
       }))
   }, [allJobs, dateRange])
 
-  // Total posted jobs in range (regardless of whether they have metrics)
   const totalPostsInRange = useMemo(() => {
     return allJobs
       .filter(j => j.stage === 'posted' || j.stage === 'archive')
@@ -120,13 +136,11 @@ export function ReportsPage() {
       }).length
   }, [allJobs, dateRange])
 
-  // Summary stats
   const totalViews = metricsData.reduce((s, m) => s + m.views, 0)
   const totalEngagement = metricsData.reduce((s, m) => s + m.likes + m.comments + m.shares, 0)
   const avgEngagementRate = metricsData.length > 0
     ? metricsData.reduce((s, m) => s + m.engagementRate, 0) / metricsData.length : 0
 
-  // Platform breakdown
   const platformData = metricsData.reduce((acc, m) => {
     if (!acc[m.platform]) acc[m.platform] = { views: 0, engagement: 0, count: 0 }
     acc[m.platform].views += m.views
@@ -146,7 +160,6 @@ export function ReportsPage() {
     (b.likes + b.comments + b.shares) - (a.likes + a.comments + a.shares)
   )
 
-  // Monthly data for charts
   const monthlyChartData = useMemo(() => {
     const byMonth: Record<string, { views: number; engagement: number; posts: number }> = {}
     metricsData.forEach(m => {
@@ -159,7 +172,6 @@ export function ReportsPage() {
     return Object.entries(byMonth).map(([month, d]) => ({ month, ...d }))
   }, [metricsData])
 
-  // Compare workspace monthly data
   const compareMonthlyData = useMemo(() => {
     const compMetrics = compareJobs
       .filter(j => (j.stage === 'posted' || j.stage === 'archive') && j.live_metrics)
@@ -183,7 +195,6 @@ export function ReportsPage() {
     return Object.entries(byMonth).map(([month, d]) => ({ month, ...d }))
   }, [compareJobs, dateRange])
 
-  // Merged chart data for comparison
   const mergedMonthly = useMemo(() => {
     const allMonths = new Set([...monthlyChartData.map(d => d.month), ...compareMonthlyData.map(d => d.month)])
     return Array.from(allMonths).map(month => {
@@ -199,7 +210,43 @@ export function ReportsPage() {
     })
   }, [monthlyChartData, compareMonthlyData])
 
-  // Update all posts in range via Apify
+  const automationSummary = useMemo(() => {
+    const linkedEventCount = monthlyEvents.filter((event) => event.linked_job_id).length
+    const recurringEventCount = monthlyEvents.filter((event) => event.recurrence && event.recurrence !== 'none').length
+    const aiEventCount = monthlyEvents.filter((event) => event.source === 'ai').length
+    const upcomingJobDueCount = allJobs.filter((job) => job.due_date).length
+    const narrative = [
+      `${monthlyEvents.length} events currently scheduled this month`,
+      `${linkedEventCount} already linked to content jobs`,
+      `${recurringEventCount} recurring planning anchors`,
+      `${aiEventCount} imported via Kimi`,
+      `${upcomingJobDueCount} jobs with due dates in the workspace`,
+    ].join(' • ')
+
+    return {
+      linkedEventCount,
+      recurringEventCount,
+      aiEventCount,
+      upcomingJobDueCount,
+      narrative,
+    }
+  }, [monthlyEvents, allJobs])
+
+  const contentPlanningRows = useMemo(() => {
+    return monthlyEvents.map((event) => {
+      const linkedJob = allJobs.find((job) => job.id === event.linked_job_id)
+      return {
+        id: event.id,
+        title: event.title,
+        when: format(new Date(event.event_date), 'EEE d MMM'),
+        category: event.category || 'General',
+        source: event.source,
+        linkedJobTitle: linkedJob?.title || 'Not linked',
+        linkedJobStage: linkedJob?.stage || '—',
+      }
+    })
+  }, [monthlyEvents, allJobs])
+
   const handleUpdateAll = useCallback(async () => {
     const postsToUpdate = allJobs
       .filter(j => (j.stage === 'posted' || j.stage === 'archive') && j.live_url)
@@ -255,7 +302,6 @@ export function ReportsPage() {
       }
     }
 
-    // Reload jobs to reflect new metrics
     const wsId = reportWorkspace ?? selectedWorkspace
     if (wsId) {
       const freshJobs = await dbService.getJobs(wsId)
@@ -268,15 +314,36 @@ export function ReportsPage() {
     showToast(`Updated ${updated} posts${failed > 0 ? `, ${failed} failed` : ''}`)
   }, [allJobs, dateRange, reportWorkspace, selectedWorkspace, loadJobs])
 
-  // PDF generation
-  // Helper: draw a bar chart directly in jsPDF
+  const handleSaveAutomationSnapshot = async () => {
+    if (!activeWsId) return
+    const now = new Date()
+    const start = format(new Date(now.getFullYear(), now.getMonth(), 1), 'yyyy-MM-dd')
+    const end = format(new Date(now.getFullYear(), now.getMonth() + 1, 0), 'yyyy-MM-dd')
+
+    await dbService.saveReport({
+      workspace_id: activeWsId,
+      title: `Automation Snapshot — ${format(now, 'MMMM yyyy')}`,
+      type: 'summary',
+      start_date: start,
+      end_date: end,
+      metrics_json: JSON.stringify({
+        automationSummary,
+        contentPlanningRows,
+        generatedAt: now.toISOString(),
+      }),
+    })
+
+    const reports = await dbService.getReports(activeWsId)
+    setSavedReports(reports)
+    showToast('Automation snapshot saved in Reports history.')
+  }
+
   const drawBarChart = (doc: jsPDF, x: number, y: number, w: number, h: number,
     data: { label: string; value: number; color: [number, number, number] }[], title: string) => {
     doc.setFontSize(10); doc.setTextColor(24, 24, 27); doc.text(title, x, y - 3)
     const maxVal = Math.max(...data.map(d => d.value), 1)
     const barW = Math.min(30, (w - 10) / data.length - 4)
     const chartX = x + 5
-    // Y axis line
     doc.setDrawColor(200, 200, 200); doc.line(chartX, y, chartX, y + h); doc.line(chartX, y + h, x + w, y + h)
     data.forEach((d, i) => {
       const bx = chartX + 8 + i * (barW + 8)
@@ -328,7 +395,6 @@ export function ReportsPage() {
       })
       y += 34
 
-      // Platform Performance Chart
       const platColors: Record<string, [number, number, number]> = {
         instagram: [99, 102, 241], tiktok: [16, 185, 129], youtube: [239, 68, 68]
       }
@@ -348,30 +414,13 @@ export function ReportsPage() {
         y += 65
       }
 
-      // Month-over-Month Chart
       if (monthlyChartData.length > 0) {
         const monthColors: [number, number, number] = [99, 102, 241]
         const monthBars = monthlyChartData.map(d => ({ label: d.month, value: d.views, color: monthColors }))
         drawBarChart(doc, 14, y + 4, pageWidth - 28, 50, monthBars, 'Month-over-Month Views')
         y += 65
-
-        // Month comparison text
-        if (monthlyChartData.length >= 2) {
-          const curr = monthlyChartData[monthlyChartData.length - 1]
-          const prev = monthlyChartData[monthlyChartData.length - 2]
-          const viewsΔ = prev.views > 0 ? (((curr.views - prev.views) / prev.views) * 100).toFixed(1) : 'N/A'
-          const engΔ = prev.engagement > 0 ? (((curr.engagement - prev.engagement) / prev.engagement) * 100).toFixed(1) : 'N/A'
-          doc.setFontSize(8); doc.setTextColor(80, 80, 80)
-          doc.text(`${curr.month} vs ${prev.month}: Views ${viewsΔ}%, Engagement ${engΔ}%`, 14, y)
-          y += 6
-        } else {
-          doc.setFontSize(8); doc.setTextColor(150, 150, 150)
-          doc.text('No previous month data available for comparison.', 14, y)
-          y += 6
-        }
       }
 
-      // Check if we need a new page for tables
       if (y > 180) { doc.addPage(); y = 20 }
 
       doc.setFontSize(14); doc.setTextColor(24, 24, 27); doc.text('Platform Breakdown', 14, y); y += 4
@@ -441,7 +490,6 @@ export function ReportsPage() {
       })
       y += 34
 
-      // Month-over-month
       doc.setFontSize(14); doc.setTextColor(24, 24, 27); doc.text('Month-over-Month Performance', 14, y); y += 4
       const monthEntries = monthlyChartData
       const monthRows = monthEntries.map((d, i) => {
@@ -456,7 +504,6 @@ export function ReportsPage() {
         bodyStyles: { fontSize: 9 }, margin: { left: 14, right: 14 } })
       y = (doc as any).lastAutoTable.finalY + 10
 
-      // All posts ranked
       if (y > 220) { doc.addPage(); y = 20 }
       doc.setFontSize(14); doc.text('All Posts Ranked by Engagement', 14, y); y += 4
       const allRows = topPosts.map((m, i) => [
@@ -470,26 +517,6 @@ export function ReportsPage() {
         theme: 'grid', headStyles: { fillColor: [24,24,27], textColor: 255, fontSize: 8 },
         bodyStyles: { fontSize: 7 }, columnStyles: { 0: { cellWidth: 8 }, 1: { cellWidth: 42 } },
         margin: { left: 14, right: 14 } })
-      y = (doc as any).lastAutoTable.finalY + 10
-
-      // Recommendations
-      if (y > 240) { doc.addPage(); y = 20 }
-      doc.setFillColor(234, 250, 241); doc.roundedRect(14, y, pageWidth - 28, 50, 3, 3, 'F')
-      doc.setFontSize(13); doc.setTextColor(22, 101, 52); doc.text('Recommendations', 20, y + 10)
-      doc.setFontSize(9); doc.setTextColor(21, 128, 61)
-      const recs: string[] = []
-      const platAnalysis = Object.entries(platformData).sort((a, b) => {
-        const rA = a[1].views > 0 ? (a[1].engagement / a[1].views) * 100 : 0
-        const rB = b[1].views > 0 ? (b[1].engagement / b[1].views) * 100 : 0
-        return rB - rA
-      })
-      if (platAnalysis.length > 0) recs.push(`Focus on ${platAnalysis[0][0]} — highest engagement rate.`)
-      if (metricsData.length < 10) recs.push('Track more posts for statistically meaningful insights.')
-      if (avgEngagementRate < 3) recs.push('Engagement below 3% — experiment with hooks, CTAs, trending audio.')
-      else if (avgEngagementRate > 5) recs.push('Strong engagement! Double down and increase posting frequency.')
-      if (topPosts[0]) recs.push(`Top post "${topPosts[0].jobTitle.slice(0, 30)}" shows what works — create similar content.`)
-      if (recs.length === 0) recs.push('Import more data to unlock smart recommendations.')
-      recs.forEach((r, i) => { if (y + 16 + i * 6 < y + 46) doc.text(`${i + 1}. ${r}`, 20, y + 18 + i * 6) })
 
       const filename = `${currentWorkspace?.name || 'report'}-quarterly-${format(new Date(), 'yyyy-MM-dd')}.pdf`
       doc.save(filename)
@@ -539,15 +566,14 @@ export function ReportsPage() {
 
       <div className="flex-1 overflow-auto p-6">
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 lg:w-[400px]">
+          <TabsList className="grid w-full grid-cols-4 lg:w-[520px]">
             <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="calendar-report">Calendar Report</TabsTrigger>
             <TabsTrigger value="charts">Charts</TabsTrigger>
             <TabsTrigger value="export">Export</TabsTrigger>
           </TabsList>
 
-          {/* ─── Overview Tab ─── */}
           <TabsContent value="overview" className="space-y-6">
-            {/* KPI Cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <Card>
                 <CardHeader className="pb-2"><CardTitle className="text-sm font-medium flex items-center gap-2"><Eye className="h-4 w-4" />Total Views</CardTitle></CardHeader>
@@ -567,7 +593,63 @@ export function ReportsPage() {
               </Card>
             </div>
 
-            {/* Date Range + Update Button */}
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2"><Sparkles className="h-4 w-4" />Automation Snapshot</CardTitle>
+                  <CardDescription>Auto-generated planning summary from current jobs and calendar data</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="rounded-lg border p-3 bg-background/50">
+                      <p className="text-xs text-muted-foreground">Linked Events</p>
+                      <p className="text-xl font-semibold">{automationSummary.linkedEventCount}</p>
+                    </div>
+                    <div className="rounded-lg border p-3 bg-background/50">
+                      <p className="text-xs text-muted-foreground">Recurring Events</p>
+                      <p className="text-xl font-semibold">{automationSummary.recurringEventCount}</p>
+                    </div>
+                    <div className="rounded-lg border p-3 bg-background/50">
+                      <p className="text-xs text-muted-foreground">Kimi Imported</p>
+                      <p className="text-xl font-semibold">{automationSummary.aiEventCount}</p>
+                    </div>
+                    <div className="rounded-lg border p-3 bg-background/50">
+                      <p className="text-xs text-muted-foreground">Jobs with Due Dates</p>
+                      <p className="text-xl font-semibold">{automationSummary.upcomingJobDueCount}</p>
+                    </div>
+                  </div>
+                  <p className="text-sm text-muted-foreground">{automationSummary.narrative}</p>
+                  <Button onClick={handleSaveAutomationSnapshot} variant="outline">
+                    <Clock3 className="h-4 w-4 mr-2" />
+                    Save Snapshot to Report History
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2"><FileText className="h-4 w-4" />Saved Report History</CardTitle>
+                  <CardDescription>Recent generated summaries and automation snapshots</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {savedReports.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No saved reports yet.</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {savedReports.slice(0, 6).map((report) => (
+                        <div key={report.id} className="rounded-lg border p-3 bg-background/50">
+                          <p className="font-medium text-sm">{report.title}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {report.type} • {report.created_at ? format(new Date(report.created_at), 'd MMM yyyy h:mm a') : 'Unknown date'}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -602,7 +684,6 @@ export function ReportsPage() {
               </CardContent>
             </Card>
 
-            {/* Top Posts Table */}
             {metricsData.length > 0 && (
               <Card>
                 <CardHeader><CardTitle>Top Performing Posts</CardTitle></CardHeader>
@@ -640,9 +721,87 @@ export function ReportsPage() {
             )}
           </TabsContent>
 
-          {/* ─── Charts Tab ─── */}
+          <TabsContent value="calendar-report" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4" />
+                  This Month's Event Outlook
+                </CardTitle>
+                <CardDescription>Upcoming dates and events to plan content around this month</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {monthlyEvents.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No events stored for this month yet.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {monthlyEvents.map((event) => (
+                      <div key={event.id} className="rounded-lg border p-3 bg-background/60">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex items-start gap-3">
+                            <span className={`mt-1 h-3 w-3 rounded-full ${event.color || 'bg-blue-500'}`} />
+                            <div>
+                              <p className="font-medium">{event.title}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {format(new Date(event.event_date), 'EEE d MMM yyyy')}
+                                {event.start_time ? ` • ${event.start_time}` : ''}
+                                {event.category ? ` • ${event.category}` : ''}
+                                {event.recurrence !== 'none' ? ` • repeats ${event.recurrence}` : ''}
+                              </p>
+                              {event.description && (
+                                <p className="text-sm text-muted-foreground mt-1">{event.description}</p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2"><Briefcase className="h-4 w-4" />Event → Content Planning Map</CardTitle>
+                <CardDescription>Quick automation view of how events connect to jobs</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {contentPlanningRows.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No calendar planning rows yet.</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b text-left text-xs text-muted-foreground">
+                          <th className="pb-2 pr-4">Event</th>
+                          <th className="pb-2 pr-4">When</th>
+                          <th className="pb-2 pr-4">Category</th>
+                          <th className="pb-2 pr-4">Source</th>
+                          <th className="pb-2 pr-4">Linked Job</th>
+                          <th className="pb-2">Job Stage</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {contentPlanningRows.map((row) => (
+                          <tr key={row.id} className="border-b border-border/50">
+                            <td className="py-2 pr-4 font-medium">{row.title}</td>
+                            <td className="py-2 pr-4">{row.when}</td>
+                            <td className="py-2 pr-4">{row.category}</td>
+                            <td className="py-2 pr-4 uppercase">{row.source}</td>
+                            <td className="py-2 pr-4">{row.linkedJobTitle}</td>
+                            <td className="py-2">{row.linkedJobStage}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           <TabsContent value="charts" className="space-y-6">
-            {/* Chart Controls */}
             <Card>
               <CardContent className="pt-6">
                 <div className="flex items-center gap-4 flex-wrap">
@@ -678,7 +837,6 @@ export function ReportsPage() {
               </Card>
             ) : (
               <>
-                {/* Platform Breakdown */}
                 <Card>
                   <CardHeader><CardTitle>Platform Performance</CardTitle></CardHeader>
                   <CardContent>
@@ -698,7 +856,6 @@ export function ReportsPage() {
                   </CardContent>
                 </Card>
 
-                {/* Month-over-Month */}
                 <Card>
                   <CardHeader>
                     <CardTitle>
@@ -728,7 +885,6 @@ export function ReportsPage() {
                   </CardContent>
                 </Card>
 
-                {/* Engagement Rate by Post */}
                 <Card>
                   <CardHeader><CardTitle>Engagement Rate by Post</CardTitle></CardHeader>
                   <CardContent>
@@ -749,7 +905,6 @@ export function ReportsPage() {
             )}
           </TabsContent>
 
-          {/* ─── Export Tab ─── */}
           <TabsContent value="export" className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Card>

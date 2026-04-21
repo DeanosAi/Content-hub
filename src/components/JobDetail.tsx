@@ -119,10 +119,10 @@ export function JobDetail({ job: jobProp, open, onOpenChange }: JobDetailProps) 
   }
   
   const handleDelete = async () => {
-    if (confirm('Are you sure you want to delete this job?')) {
-      await deleteJob(job.id)
-      onOpenChange(false)
-    }
+    const confirmed = confirm('Delete this job?')
+    if (!confirmed) return
+    await deleteJob(job.id)
+    onOpenChange(false)
   }
   
   const handleStageChange = async (newStage: JobStage) => {
@@ -523,9 +523,9 @@ export function JobDetail({ job: jobProp, open, onOpenChange }: JobDetailProps) 
                         size="sm"
                         className="h-7 text-xs text-destructive hover:text-destructive"
                         onClick={async () => {
-                          if (confirm('Remove live URL and metrics?')) {
-                            await updateJob(job.id, { live_url: null, live_metrics: null })
-                          }
+                          const confirmed = confirm('Remove live URL and metrics?')
+                          if (!confirmed) return
+                          await updateJob(job.id, { live_url: null, live_metrics: null })
                         }}
                       >
                         <Trash2 className="h-3 w-3" />

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Plus, TrendingUp, FileText, Settings, Briefcase, MoreHorizontal, Pencil, Trash2, GripVertical } from 'lucide-react'
+import { Plus, TrendingUp, FileText, Settings, Briefcase, MoreHorizontal, Pencil, Trash2, GripVertical, CalendarDays } from 'lucide-react'
 import { Button } from './ui/button'
 import { useJobStore } from '@/store/jobStore'
 import { dbService } from '@/services/database'
@@ -80,11 +80,11 @@ export function Sidebar({ currentView, onViewChange }: SidebarProps) {
   }
   
   const handleDeleteWorkspace = async (id: number) => {
-    if (confirm('Are you sure you want to delete this workspace? All jobs in this workspace will be archived.')) {
-      await deleteWorkspace(id)
-      if (selectedWorkspace === id) {
-        setSelectedWorkspace(null)
-      }
+    const confirmed = confirm('Delete this workspace? Jobs in this workspace will be archived.')
+    if (!confirmed) return
+    await deleteWorkspace(id)
+    if (selectedWorkspace === id) {
+      setSelectedWorkspace(null)
     }
   }
   
@@ -103,6 +103,7 @@ export function Sidebar({ currentView, onViewChange }: SidebarProps) {
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: Briefcase },
+    { id: 'calendar', label: 'Calendar', icon: CalendarDays },
     { id: 'trending', label: 'Trending Analysis', icon: TrendingUp },
     { id: 'reports', label: 'Reports', icon: FileText },
     { id: 'settings', label: 'Settings', icon: Settings },
