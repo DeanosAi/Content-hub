@@ -156,6 +156,16 @@ export function ReportsPage() {
     count: d.count,
   }))
 
+  const overviewPlatformCards = (['instagram', 'tiktok', 'facebook', 'youtube'] as Platform[])
+    .filter((platform) => platformData[platform])
+    .map((platform) => ({
+      platform,
+      label: platform.charAt(0).toUpperCase() + platform.slice(1),
+      views: platformData[platform]?.views || 0,
+      engagement: platformData[platform]?.engagement || 0,
+      count: platformData[platform]?.count || 0,
+    }))
+
   const topPosts = [...metricsData].sort((a, b) =>
     (b.likes + b.comments + b.shares) - (a.likes + a.comments + a.shares)
   )
@@ -688,9 +698,28 @@ export function ReportsPage() {
             </Card>
 
             {metricsData.length > 0 && (
-              <Card>
-                <CardHeader><CardTitle>Top Performing Posts</CardTitle></CardHeader>
-                <CardContent>
+              <>
+                <Card>
+                  <CardHeader><CardTitle>Platform Overview</CardTitle></CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                      {overviewPlatformCards.map((item) => (
+                        <div key={item.platform} className="rounded-lg border p-4 bg-background/50 space-y-2">
+                          <p className="text-sm font-medium">{item.label}</p>
+                          <div className="text-xs text-muted-foreground space-y-1">
+                            <div>Posts tracked: {item.count}</div>
+                            <div>Views: {item.views.toLocaleString()}</div>
+                            <div>Engagement: {item.engagement.toLocaleString()}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader><CardTitle>Top Performing Posts</CardTitle></CardHeader>
+                  <CardContent>
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
@@ -721,6 +750,7 @@ export function ReportsPage() {
                   </div>
                 </CardContent>
               </Card>
+              </>
             )}
           </TabsContent>
 

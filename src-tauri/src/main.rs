@@ -15,6 +15,8 @@ struct MetricsResponse {
 fn detect_platform(url: &str) -> &'static str {
     if url.contains("instagram.com") {
         "instagram"
+    } else if url.contains("facebook.com") || url.contains("fb.watch") {
+        "facebook"
     } else if url.contains("tiktok.com") {
         "tiktok"
     } else if url.contains("youtube.com") || url.contains("youtu.be") {
@@ -105,6 +107,57 @@ async fn fetch_instagram_metrics(
     })
 }
 
+/// Fetch Facebook post metrics via Apify
+async fn fetch_facebook_metrics(
+    client: &reqwest::Client,
+    api_key: &str,
+    url: &str,
+) -> Result<MetricsResponse, String> {
+    let input = serde_json::json!({
+        "startUrls": [{ "url": url }],
+        "resultsLimit": 1,
+        "includeNestedComments": false,
+    });
+
+    let items = run_apify_actor(client, api_key, "apify~facebook-posts-scraper", input).await?;
+
+    if items.is_empty() {
+        return Err("No data returned from Facebook scraper. The post may be private or the URL invalid.".to_string());
+    }
+
+    let post = &items[0];
+
+    let views = post["views"].as_u64()
+        .or_else(|| post["videoViewCount"].as_u64())
+        .or_else(|| post["playCount"].as_u64())
+        .unwrap_or(0);
+    let likes = post["likes"].as_u64()
+        .or_else(|| post["likesCount"].as_u64())
+        .or_else(|| post["reactions"].as_object().and_then(|m| m["like"].as_u64()))
+        .unwrap_or(0);
+    let comments = post["comments"].as_u64()
+        .or_else(|| post["commentsCount"].as_u64())
+        .unwrap_or(0);
+    let shares = post["shares"].as_u64()
+        .or_else(|| post["sharesCount"].as_u64())
+        .unwrap_or(0);
+
+    let base = if views > 0 { views } else { likes + comments + shares };
+    let engagement_rate = if base > 0 {
+        ((likes + comments + shares) as f64 / base as f64) * 100.0
+    } else {
+        0.0
+    };
+
+    Ok(MetricsResponse {
+        views,
+        likes,
+        comments,
+        shares,
+        engagement_rate: (engagement_rate * 100.0).round() / 100.0,
+    })
+}
+
 /// Fetch TikTok post metrics via Apify
 async fn fetch_tiktok_metrics(
     client: &reqwest::Client,
@@ -169,11 +222,12 @@ async fn fetch_metrics_with_ai(url: String, api_key: String) -> Result<MetricsRe
 
     match platform {
         "instagram" => fetch_instagram_metrics(&client, &api_key, &url).await,
+        "facebook" => fetch_facebook_metrics(&client, &api_key, &url).await,
         "tiktok" => fetch_tiktok_metrics(&client, &api_key, &url).await,
         "youtube" => {
             Err("For YouTube, use the YouTube Data API import in Reports instead. YouTube metrics don't require scraping.".to_string())
         }
-        _ => Err(format!("Unsupported platform. URL must be from Instagram or TikTok. Got: {}", url))
+        _ => Err(format!("Unsupported platform. URL must be from Instagram, Facebook, or TikTok. Got: {}", url))
     }
 }
 
