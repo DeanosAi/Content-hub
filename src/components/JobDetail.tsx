@@ -158,7 +158,7 @@ export function JobDetail({ job: jobProp, open, onOpenChange }: JobDetailProps) 
           last_updated: new Date().toISOString()
         }
       })
-      alert('✅ Live metrics fetched from Apify!')
+      alert('âœ… Live metrics fetched from Apify!')
     } catch (error: any) {
       console.error('Failed to fetch metrics:', error)
       alert(`Failed to fetch metrics: ${error?.toString?.()?.includes('Unsupported') ? error : 'Check your Apify token and make sure the post URL is public.'}`)
@@ -177,7 +177,7 @@ export function JobDetail({ job: jobProp, open, onOpenChange }: JobDetailProps) 
         return field.value
       }
     }
-    return field.value || '—'
+    return field.value || 'â€”'
   }
 
   const renderCustomFieldInput = (field: CustomField) => {
@@ -284,7 +284,7 @@ export function JobDetail({ job: jobProp, open, onOpenChange }: JobDetailProps) 
               <Label>Platform</Label>
               {isEditing ? (
                 <div className="flex gap-2 flex-wrap">
-                  {(['instagram', 'tiktok', 'youtube'] as Platform[]).map((platform) => (
+                  {(['instagram', 'tiktok', 'youtube', 'facebook'] as Platform[]).map((platform) => (
                     <button
                       key={platform}
                       type="button"
@@ -495,7 +495,7 @@ export function JobDetail({ job: jobProp, open, onOpenChange }: JobDetailProps) 
                 <Input
                   value={editedJob.live_url || ''}
                   onChange={(e) => setEditedJob({ ...editedJob, live_url: e.target.value })}
-                  placeholder="https://instagram.com/p/... or https://tiktok.com/@..."
+                  placeholder="https://instagram.com/p/... or https://facebook.com/... or https://tiktok.com/@..."
                 />
               ) : job.live_url ? (
                 <div className="space-y-2">
@@ -605,7 +605,7 @@ export function JobDetail({ job: jobProp, open, onOpenChange }: JobDetailProps) 
                             custom_fields: job.custom_fields,
                           })
                           setShowCopyMenu(false)
-                          alert(`Copied to "${w.name}" → ${job.stage}`)
+                          alert(`Copied to "${w.name}" â†’ ${job.stage}`)
                         } catch (e) {
                           console.error('Copy failed:', e)
                           alert('Failed to copy job')

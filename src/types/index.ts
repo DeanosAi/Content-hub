@@ -8,7 +8,7 @@ export interface Workspace {
 }
 
 export type JobStage = string // Now dynamic based on workspace columns
-export type Platform = 'instagram' | 'tiktok' | 'youtube'
+export type Platform = 'instagram' | 'tiktok' | 'youtube' | 'facebook'
 export type CustomFieldType = 'text' | 'textarea' | 'date'
 export type CalendarView = 'week' | 'month' | 'year'
 

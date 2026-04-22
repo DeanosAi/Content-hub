@@ -28,6 +28,7 @@ const PLATFORM_COLORS: Record<string, string> = {
   instagram: 'bg-black border border-white/20',
   tiktok: 'bg-black border border-white/20',
   youtube: 'bg-red-500',
+  facebook: 'bg-blue-600',
 }
 
 const COLOR_OPTIONS = [

@@ -168,7 +168,7 @@ export function Dashboard() {
                 <div className="space-y-2">
                   <Label className="text-xs">Platform</Label>
                   <div className="flex gap-2">
-                    {([null, 'instagram', 'tiktok', 'youtube'] as (Platform | null)[]).map((pl) => (
+                    {([null, 'instagram', 'tiktok', 'youtube', 'facebook'] as (Platform | null)[]).map((pl) => (
                       <Button
                         key={String(pl)}
                         variant={filters.platform === pl ? 'default' : 'outline'}

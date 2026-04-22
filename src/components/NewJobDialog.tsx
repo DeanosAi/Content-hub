@@ -34,6 +34,7 @@ const PLATFORMS: { value: Platform; label: string; color: string }[] = [
   { value: 'instagram', label: 'Instagram', color: 'bg-pink-500' },
   { value: 'tiktok', label: 'TikTok', color: 'bg-black border border-white/20' },
   { value: 'youtube', label: 'YouTube', color: 'bg-red-500' },
+  { value: 'facebook', label: 'Facebook', color: 'bg-blue-600' },
 ]
 
 const FIELD_TYPE_OPTIONS: { value: CustomFieldType; label: string }[] = [

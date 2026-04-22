@@ -396,7 +396,10 @@ export function ReportsPage() {
       y += 34
 
       const platColors: Record<string, [number, number, number]> = {
-        instagram: [99, 102, 241], tiktok: [16, 185, 129], youtube: [239, 68, 68]
+        instagram: [99, 102, 241],
+        tiktok: [16, 185, 129],
+        youtube: [239, 68, 68],
+        facebook: [37, 99, 235],
       }
       const platChartData = Object.entries(platformData).map(([p, d]) => ({
         label: p.charAt(0).toUpperCase() + p.slice(1),
