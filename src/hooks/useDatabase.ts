@@ -29,7 +29,7 @@ export function useDatabase() {
           stage TEXT CHECK(stage IN ('brief', 'production', 'ready', 'posted')) DEFAULT 'brief',
           priority INTEGER DEFAULT 0,
           due_date DATETIME,
-          platform TEXT CHECK(platform IN ('instagram', 'tiktok', 'youtube', 'both')),
+          platform TEXT CHECK(platform IN ('instagram', 'facebook', 'tiktok', 'youtube', 'both')),
           target_hashtags TEXT,
           file_links TEXT,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
