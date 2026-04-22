@@ -184,10 +184,16 @@ class DatabaseService {
       const columns: any[] = await this.db.select('PRAGMA table_info(jobs)')
       const hasLiveUrl = columns.some(col => col.name === 'live_url')
       const hasLiveMetrics = columns.some(col => col.name === 'live_metrics_json')
+      const hasInstagramLiveUrl = columns.some(col => col.name === 'instagram_live_url')
+      const hasFacebookLiveUrl = columns.some(col => col.name === 'facebook_live_url')
+      const hasPlatformMetrics = columns.some(col => col.name === 'platform_metrics_json')
       const hasCustomFields = columns.some(col => col.name === 'custom_fields_json')
       
       if (!hasLiveUrl) await this.db.execute('ALTER TABLE jobs ADD COLUMN live_url TEXT')
       if (!hasLiveMetrics) await this.db.execute('ALTER TABLE jobs ADD COLUMN live_metrics_json TEXT')
+      if (!hasInstagramLiveUrl) await this.db.execute('ALTER TABLE jobs ADD COLUMN instagram_live_url TEXT')
+      if (!hasFacebookLiveUrl) await this.db.execute('ALTER TABLE jobs ADD COLUMN facebook_live_url TEXT')
+      if (!hasPlatformMetrics) await this.db.execute('ALTER TABLE jobs ADD COLUMN platform_metrics_json TEXT')
       if (!hasCustomFields) await this.db.execute('ALTER TABLE jobs ADD COLUMN custom_fields_json TEXT')
     } catch (error) {
       console.error('Failed to ensure jobs columns:', error)
@@ -507,6 +513,9 @@ class DatabaseService {
         ...row,
         platform: row.platform ? JSON.parse(row.platform) : null,
         live_metrics: row.live_metrics_json ? JSON.parse(row.live_metrics_json) : null,
+        instagram_live_url: row.instagram_live_url ?? null,
+        facebook_live_url: row.facebook_live_url ?? null,
+        platform_metrics: row.platform_metrics_json ? JSON.parse(row.platform_metrics_json) : null,
         custom_fields: row.custom_fields_json ? JSON.parse(row.custom_fields_json) : null
       }))
     } catch (error: any) {
@@ -520,6 +529,9 @@ class DatabaseService {
           platform: row.platform ? JSON.parse(row.platform) : null,
           live_url: null,
           live_metrics: null,
+          instagram_live_url: null,
+          facebook_live_url: null,
+          platform_metrics: null,
           custom_fields: null
         }))
       }
@@ -532,8 +544,8 @@ class DatabaseService {
     try {
       try {
         const result = await this.db.execute(
-          `INSERT INTO jobs (workspace_id, title, description, stage, priority, due_date, platform, target_hashtags, file_links, live_url, live_metrics_json, custom_fields_json)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          `INSERT INTO jobs (workspace_id, title, description, stage, priority, due_date, platform, target_hashtags, file_links, live_url, live_metrics_json, instagram_live_url, facebook_live_url, platform_metrics_json, custom_fields_json)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             jobData.workspace_id,
             jobData.title,
@@ -546,6 +558,9 @@ class DatabaseService {
             jobData.file_links,
             jobData.live_url,
             jobData.live_metrics ? JSON.stringify(jobData.live_metrics) : null,
+            jobData.instagram_live_url ?? null,
+            jobData.facebook_live_url ?? null,
+            jobData.platform_metrics ? JSON.stringify(jobData.platform_metrics) : null,
             jobData.custom_fields ? JSON.stringify(jobData.custom_fields) : null,
           ]
         )
@@ -576,11 +591,17 @@ class DatabaseService {
         processedUpdates.live_metrics_json = updates.live_metrics ? JSON.stringify(updates.live_metrics) : null
         delete processedUpdates.live_metrics
       }
+      if ('platform_metrics' in processedUpdates) {
+        processedUpdates.platform_metrics_json = updates.platform_metrics ? JSON.stringify(updates.platform_metrics) : null
+        delete processedUpdates.platform_metrics
+      }
       if ('custom_fields' in processedUpdates) {
         processedUpdates.custom_fields_json = updates.custom_fields ? JSON.stringify(updates.custom_fields) : null
         delete processedUpdates.custom_fields
       }
       if (updates.live_url !== undefined) processedUpdates.live_url = updates.live_url
+      if (updates.instagram_live_url !== undefined) processedUpdates.instagram_live_url = updates.instagram_live_url
+      if (updates.facebook_live_url !== undefined) processedUpdates.facebook_live_url = updates.facebook_live_url
       const fields = Object.keys(processedUpdates).map(key => `${key} = ?`).join(', ')
       const values = Object.values(processedUpdates)
       await this.db.execute(`UPDATE jobs SET ${fields}, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [...values, id])
@@ -591,6 +612,10 @@ class DatabaseService {
         delete processedUpdates.live_url
         delete processedUpdates.live_metrics
         delete processedUpdates.live_metrics_json
+        delete processedUpdates.instagram_live_url
+        delete processedUpdates.facebook_live_url
+        delete processedUpdates.platform_metrics
+        delete processedUpdates.platform_metrics_json
         delete processedUpdates.custom_fields
         delete processedUpdates.custom_fields_json
         if (Object.keys(processedUpdates).length === 0) return

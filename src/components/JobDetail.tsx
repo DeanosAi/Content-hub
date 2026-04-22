@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { Job, JobStage, Platform, CustomField, CustomFieldType } from '@/types'
+import { Job, JobStage, Platform, PlatformMetric, CustomField, CustomFieldType } from '@/types'
 import { useJobStore } from '@/store/jobStore'
 import { dbService } from '@/services/database'
 import { cn } from '@/lib/utils'
@@ -130,7 +130,10 @@ export function JobDetail({ job: jobProp, open, onOpenChange }: JobDetailProps) 
   }
   
   const handleFetchMetrics = async () => {
-    if (!job.live_url) return
+    const instagramUrl = job.instagram_live_url || (job.live_url?.includes('instagram.com') ? job.live_url : null)
+    const facebookUrl = job.facebook_live_url || (job.live_url?.includes('facebook.com') || job.live_url?.includes('fb.watch') ? job.live_url : null)
+
+    if (!instagramUrl && !facebookUrl) return
     
     setIsFetchingMetrics(true)
     try {
@@ -142,14 +145,16 @@ export function JobDetail({ job: jobProp, open, onOpenChange }: JobDetailProps) 
         setIsFetchingMetrics(false)
         return
       }
-      
-      const metrics = await invoke('fetch_metrics_with_ai', {
-        url: job.live_url,
-        apiKey: apifyKey
-      }) as { views: number; likes: number; comments: number; shares: number; engagement_rate: number }
-      
-      await updateJob(job.id, {
-        live_metrics: {
+
+      const platformMetrics: Partial<Record<Platform, PlatformMetric>> = { ...(job.platform_metrics || {}) }
+
+      if (instagramUrl) {
+        const metrics = await invoke('fetch_metrics_with_ai', {
+          url: instagramUrl,
+          apiKey: apifyKey
+        }) as { views: number; likes: number; comments: number; shares: number; engagement_rate: number }
+
+        platformMetrics.instagram = {
           views: metrics.views || 0,
           likes: metrics.likes || 0,
           comments: metrics.comments || 0,
@@ -157,8 +162,29 @@ export function JobDetail({ job: jobProp, open, onOpenChange }: JobDetailProps) 
           engagement_rate: metrics.engagement_rate || 0,
           last_updated: new Date().toISOString()
         }
+      }
+
+      if (facebookUrl) {
+        const metrics = await invoke('fetch_metrics_with_ai', {
+          url: facebookUrl,
+          apiKey: apifyKey
+        }) as { views: number; likes: number; comments: number; shares: number; engagement_rate: number }
+
+        platformMetrics.facebook = {
+          views: metrics.views || 0,
+          likes: metrics.likes || 0,
+          comments: metrics.comments || 0,
+          shares: metrics.shares || 0,
+          engagement_rate: metrics.engagement_rate || 0,
+          last_updated: new Date().toISOString()
+        }
+      }
+      
+      await updateJob(job.id, {
+        live_metrics: platformMetrics.instagram || platformMetrics.facebook || null,
+        platform_metrics: platformMetrics,
       })
-      alert('âœ… Live metrics fetched from Apify!')
+      alert('✅ Live metrics fetched from Apify!')
     } catch (error: any) {
       console.error('Failed to fetch metrics:', error)
       alert(`Failed to fetch metrics: ${error?.toString?.()?.includes('Unsupported') ? error : 'Check your Apify token and make sure the post URL is public.'}`)
@@ -489,48 +515,92 @@ export function JobDetail({ job: jobProp, open, onOpenChange }: JobDetailProps) 
           </div>
           
           {job.stage === 'posted' && (
-            <div className="space-y-2 pt-4 border-t">
-              <Label>Live Post URL</Label>
+            <div className="space-y-3 pt-4 border-t">
+              <Label>Live Post URLs</Label>
               {isEditing ? (
-                <Input
-                  value={editedJob.live_url || ''}
-                  onChange={(e) => setEditedJob({ ...editedJob, live_url: e.target.value })}
-                  placeholder="https://instagram.com/p/... or https://facebook.com/... or https://tiktok.com/@..."
-                />
-              ) : job.live_url ? (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <a
-                      href={job.live_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 text-sm text-primary hover:underline truncate"
+                <div className="space-y-3">
+                  <div className="space-y-2">
+                    <Label className="text-xs text-muted-foreground">Instagram URL</Label>
+                    <Input
+                      value={editedJob.instagram_live_url || ''}
+                      onChange={(e) => setEditedJob({ ...editedJob, instagram_live_url: e.target.value })}
+                      placeholder="https://instagram.com/p/..."
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs text-muted-foreground">Facebook URL</Label>
+                    <Input
+                      value={editedJob.facebook_live_url || ''}
+                      onChange={(e) => setEditedJob({ ...editedJob, facebook_live_url: e.target.value })}
+                      placeholder="https://facebook.com/... or https://fb.watch/..."
+                    />
+                  </div>
+                </div>
+              ) : (job.instagram_live_url || job.facebook_live_url || job.live_url) ? (
+                <div className="space-y-3">
+                  <div className="space-y-2">
+                    {job.instagram_live_url && (
+                      <a
+                        href={job.instagram_live_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 text-sm text-primary hover:underline truncate"
+                      >
+                        <Link className="h-4 w-4 flex-shrink-0" />
+                        Open Instagram Post
+                      </a>
+                    )}
+                    {job.facebook_live_url && (
+                      <a
+                        href={job.facebook_live_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 text-sm text-primary hover:underline truncate"
+                      >
+                        <Link className="h-4 w-4 flex-shrink-0" />
+                        Open Facebook Post
+                      </a>
+                    )}
+                    {!job.instagram_live_url && !job.facebook_live_url && job.live_url && (
+                      <a
+                        href={job.live_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 text-sm text-primary hover:underline truncate"
+                      >
+                        <Link className="h-4 w-4 flex-shrink-0" />
+                        Open Live Post
+                      </a>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 text-xs"
+                      onClick={handleEdit}
                     >
-                      <Link className="h-4 w-4 flex-shrink-0" />
-                      Open Live Post
-                    </a>
-                    <div className="flex items-center gap-1 flex-shrink-0">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 text-xs"
-                        onClick={handleEdit}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 text-xs text-destructive hover:text-destructive"
-                        onClick={async () => {
-                          const confirmed = confirm('Remove live URL and metrics?')
-                          if (!confirmed) return
-                          await updateJob(job.id, { live_url: null, live_metrics: null })
-                        }}
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </div>
+                      Edit
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 text-xs text-destructive hover:text-destructive"
+                      onClick={async () => {
+                        const confirmed = confirm('Remove live URLs and metrics?')
+                        if (!confirmed) return
+                        await updateJob(job.id, {
+                          live_url: null,
+                          instagram_live_url: null,
+                          facebook_live_url: null,
+                          live_metrics: null,
+                          platform_metrics: null,
+                        })
+                      }}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
                   </div>
                   
                   <Button 
@@ -543,31 +613,38 @@ export function JobDetail({ job: jobProp, open, onOpenChange }: JobDetailProps) 
                     {isFetchingMetrics ? 'Scraping live data...' : 'Fetch Live Metrics'}
                   </Button>
                   
-                  {job.live_metrics && (
-                    <div className="mt-3 p-3 bg-muted rounded-md space-y-1">
-                      <p className="text-xs font-medium text-muted-foreground">Live Metrics</p>
-                      <div className="grid grid-cols-2 gap-2 text-sm">
-                        <div>Views: {job.live_metrics.views.toLocaleString()}</div>
-                        <div>Likes: {job.live_metrics.likes.toLocaleString()}</div>
-                        <div>Comments: {job.live_metrics.comments.toLocaleString()}</div>
-                        <div>Shares: {job.live_metrics.shares.toLocaleString()}</div>
-                        <div className="col-span-2">Engagement: {job.live_metrics.engagement_rate.toFixed(2)}%</div>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        Last updated: {new Date(job.live_metrics.last_updated).toLocaleString()}
-                      </p>
+                  {job.platform_metrics && Object.keys(job.platform_metrics).length > 0 && (
+                    <div className="mt-3 space-y-3">
+                      {Object.entries(job.platform_metrics).map(([platform, metrics]) => {
+                        if (!metrics) return null
+                        return (
+                          <div key={platform} className="p-3 bg-muted rounded-md space-y-1">
+                            <p className="text-xs font-medium text-muted-foreground capitalize">{platform} Metrics</p>
+                            <div className="grid grid-cols-2 gap-2 text-sm">
+                              <div>Views: {metrics.views.toLocaleString()}</div>
+                              <div>Likes: {metrics.likes.toLocaleString()}</div>
+                              <div>Comments: {metrics.comments.toLocaleString()}</div>
+                              <div>Shares: {metrics.shares.toLocaleString()}</div>
+                              <div className="col-span-2">Engagement: {metrics.engagement_rate.toFixed(2)}%</div>
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              Last updated: {new Date(metrics.last_updated).toLocaleString()}
+                            </p>
+                          </div>
+                        )
+                      })}
                     </div>
                   )}
                 </div>
               ) : (
                 <div className="space-y-2">
-                  <p className="text-sm text-muted-foreground">No live URL added</p>
+                  <p className="text-sm text-muted-foreground">No live URLs added</p>
                   <Button 
                     variant="outline" 
                     size="sm"
                     onClick={handleEdit}
                   >
-                    Add Live URL
+                    Add Live URLs
                   </Button>
                 </div>
               )}

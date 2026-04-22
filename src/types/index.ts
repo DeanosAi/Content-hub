@@ -19,6 +19,15 @@ export interface CustomField {
   value: string
 }
 
+export interface PlatformMetric {
+  views: number
+  likes: number
+  comments: number
+  shares: number
+  engagement_rate: number
+  last_updated: string
+}
+
 export interface Job {
   id: number
   workspace_id: number
@@ -31,14 +40,10 @@ export interface Job {
   target_hashtags: string | null
   file_links: string | null
   live_url: string | null
-  live_metrics: {
-    views: number
-    likes: number
-    comments: number
-    shares: number
-    engagement_rate: number
-    last_updated: string
-  } | null
+  live_metrics: PlatformMetric | null
+  instagram_live_url?: string | null
+  facebook_live_url?: string | null
+  platform_metrics?: Partial<Record<Platform, PlatformMetric>> | null
   custom_fields: CustomField[] | null
   created_at: string
   updated_at: string
