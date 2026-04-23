@@ -107,6 +107,26 @@ async fn fetch_instagram_metrics(
     })
 }
 
+fn get_u64_path(value: &serde_json::Value, path: &[&str]) -> Option<u64> {
+    let mut current = value;
+    for key in path {
+        current = current.get(*key)?;
+    }
+
+    current.as_u64().or_else(|| current.as_i64().and_then(|v| if v >= 0 { Some(v as u64) } else { None }))
+}
+
+fn sum_object_u64(value: Option<&serde_json::Value>) -> u64 {
+    value
+        .and_then(|v| v.as_object())
+        .map(|obj| {
+            obj.values()
+                .filter_map(|v| v.as_u64().or_else(|| v.as_i64().and_then(|n| if n >= 0 { Some(n as u64) } else { None })))
+                .sum()
+        })
+        .unwrap_or(0)
+}
+
 /// Fetch Facebook post metrics via Apify
 async fn fetch_facebook_metrics(
     client: &reqwest::Client,
@@ -127,27 +147,61 @@ async fn fetch_facebook_metrics(
 
     let post = &items[0];
 
-    let views = post["views"].as_u64()
-        .or_else(|| post["videoViewCount"].as_u64())
-        .or_else(|| post["playCount"].as_u64())
-        .unwrap_or(0);
-    let likes = post["likes"].as_u64()
-        .or_else(|| post["likesCount"].as_u64())
-        .or_else(|| post["reactions"].as_object().and_then(|m| m["like"].as_u64()))
-        .unwrap_or(0);
-    let comments = post["comments"].as_u64()
-        .or_else(|| post["commentsCount"].as_u64())
-        .unwrap_or(0);
-    let shares = post["shares"].as_u64()
-        .or_else(|| post["sharesCount"].as_u64())
-        .unwrap_or(0);
+    let views = [
+        &["views"][..],
+        &["videoViewCount"],
+        &["playCount"],
+        &["video_play_count"],
+        &["video_view_count"],
+        &["video", "views"],
+        &["statistics", "views"],
+    ]
+    .iter()
+    .find_map(|path| get_u64_path(post, path))
+    .unwrap_or(0);
 
-    let base = if views > 0 { views } else { likes + comments + shares };
-    let engagement_rate = if base > 0 {
-        ((likes + comments + shares) as f64 / base as f64) * 100.0
-    } else {
-        0.0
-    };
+    let reaction_total = sum_object_u64(post.get("reactions"))
+        .max(sum_object_u64(post.get("reactionCount")));
+
+    let likes = [
+        &["likes"][..],
+        &["likesCount"],
+        &["likes_count"],
+        &["reactionsCount"],
+        &["reaction_count"],
+        &["statistics", "likes"],
+        &["feedback", "reaction_count"],
+    ]
+    .iter()
+    .find_map(|path| get_u64_path(post, path))
+    .unwrap_or(reaction_total);
+
+    let comments = [
+        &["comments"][..],
+        &["commentsCount"],
+        &["comments_count"],
+        &["commentCount"],
+        &["feedback", "comment_count"],
+        &["statistics", "comments"],
+    ]
+    .iter()
+    .find_map(|path| get_u64_path(post, path))
+    .unwrap_or(0);
+
+    let shares = [
+        &["shares"][..],
+        &["sharesCount"],
+        &["shares_count"],
+        &["shareCount"],
+        &["feedback", "share_count"],
+        &["statistics", "shares"],
+    ]
+    .iter()
+    .find_map(|path| get_u64_path(post, path))
+    .unwrap_or(0);
+
+    let base = if views > 0 { views } else { likes.max(1) };
+    let engagement_rate = ((likes + comments + shares) as f64 / base as f64) * 100.0;
 
     Ok(MetricsResponse {
         views,
