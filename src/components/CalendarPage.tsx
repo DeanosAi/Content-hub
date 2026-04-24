@@ -537,7 +537,7 @@ export function CalendarPage() {
           </Select>
           <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
             <Sparkles className="h-4 w-4 mr-2" />
-            Import with Kimi
+            Import with Ai
           </Button>
           <Button onClick={() => openNewEvent()}>
             <Plus className="h-4 w-4 mr-2" />

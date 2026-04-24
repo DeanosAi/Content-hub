@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
-import { Calendar, Hash, Link, Trash2, Copy, ExternalLink, Plus } from 'lucide-react'
+import { Calendar, Hash, Link, Trash2, Copy, Plus, X, Upload, FileText } from 'lucide-react'
+import { open as openFileDialog } from '@tauri-apps/plugin-dialog'
 import { Button } from '@/components/ui/button'
 import {
   Sheet,
@@ -18,7 +19,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { Job, JobStage, Platform, PlatformMetric, CustomField, CustomFieldType } from '@/types'
+import { Job, JobStage, Platform, PlatformMetric, CustomField, CustomFieldType, FileLink } from '@/types'
 import { useJobStore } from '@/store/jobStore'
 import { dbService } from '@/services/database'
 import { cn } from '@/lib/utils'
@@ -51,12 +52,50 @@ const createEmptyField = (): CustomField => ({
   value: '',
 })
 
+type CachedMetric = { views: number; likes: number; comments: number; shares: number; engagement_rate: number; postId?: string | null }
+const METRICS_CACHE_TTL_MS = 15 * 60 * 1000
+const metricsCache = new Map<string, { value: CachedMetric; expiresAt: number }>()
+
+const cacheKey = (platform: 'instagram' | 'facebook', url: string) => `${platform}::${url.trim().toLowerCase()}`
+
+const readCache = (platform: 'instagram' | 'facebook', url: string): CachedMetric | null => {
+  const hit = metricsCache.get(cacheKey(platform, url))
+  if (!hit) return null
+  if (hit.expiresAt < Date.now()) {
+    metricsCache.delete(cacheKey(platform, url))
+    return null
+  }
+  return hit.value
+}
+
+const writeCache = (platform: 'instagram' | 'facebook', url: string, value: CachedMetric) => {
+  metricsCache.set(cacheKey(platform, url), { value, expiresAt: Date.now() + METRICS_CACHE_TTL_MS })
+}
+
+function inferLinkType(urlOrPath: string): FileLink['type'] {
+  const s = urlOrPath.toLowerCase()
+  if (s.includes('drive.google.com') || s.includes('docs.google.com')) return 'drive'
+  if (s.includes('dropbox.com')) return 'dropbox'
+  if (s.includes('frame.io')) return 'frame'
+  return 'other'
+}
+
+function basenameOf(path: string): string {
+  const lastSep = Math.max(path.lastIndexOf('\\'), path.lastIndexOf('/'))
+  return lastSep >= 0 ? path.slice(lastSep + 1) : path
+}
+
+function isHttpUrl(urlOrPath: string): boolean {
+  return /^https?:\/\//i.test(urlOrPath)
+}
+
 export function JobDetail({ job: jobProp, open, onOpenChange }: JobDetailProps) {
-  const { updateJob, deleteJob, moveJob, jobs, workspaces, workspaceColumns, addJob } = useJobStore()
+  const { updateJob, deleteJob, moveJob, jobs, workspaces, workspaceColumns, addJob, markMetricsFetchStart, markMetricsFetchEnd } = useJobStore()
   const [isEditing, setIsEditing] = useState(false)
   const [isFetchingMetrics, setIsFetchingMetrics] = useState(false)
   const [showCopyMenu, setShowCopyMenu] = useState(false)
-  
+  const [newLinkName, setNewLinkName] = useState('')
+  const [newLinkUrl, setNewLinkUrl] = useState('')
   const [editedJob, setEditedJob] = useState<Partial<Job>>({})
   
   const job = useMemo(() => {
@@ -134,65 +173,224 @@ export function JobDetail({ job: jobProp, open, onOpenChange }: JobDetailProps) 
     const facebookUrl = job.facebook_live_url || (job.live_url?.includes('facebook.com') || job.live_url?.includes('fb.watch') ? job.live_url : null)
 
     if (!instagramUrl && !facebookUrl) return
-    
+
     setIsFetchingMetrics(true)
+    markMetricsFetchStart(job.id)
     try {
       const apiKeys = await dbService.getSettings('api_keys') || {}
       const apifyKey = apiKeys?.apify || ''
-      
+
       if (!apifyKey) {
         alert('Please add your Apify API token in Settings first')
-        setIsFetchingMetrics(false)
         return
       }
 
+      let workspace = null as Awaited<ReturnType<typeof dbService.getWorkspace>>
+      try {
+        workspace = await dbService.getWorkspace(job.workspace_id)
+      } catch (err) {
+        console.warn('Could not load workspace for metrics fetch:', err)
+      }
+
       const platformMetrics: Partial<Record<Platform, PlatformMetric>> = { ...(job.platform_metrics || {}) }
+      const successes: string[] = []
+      const failures: { platform: string; error: string }[] = []
+      const jobFieldUpdates: Partial<Job> = {}
+
+      const saveMetrics = async () => {
+        await updateJob(job.id, {
+          live_metrics: platformMetrics.instagram || platformMetrics.facebook || null,
+          platform_metrics: { ...platformMetrics },
+          ...jobFieldUpdates,
+        })
+      }
+
+      let fbPageUrl = workspace?.facebook_page_url?.trim() || ''
+
+      if (facebookUrl && !fbPageUrl && workspace) {
+        const entered = window.prompt(
+          `To reliably fetch Facebook metrics, Content Hub needs the Facebook page URL ` +
+          `for workspace "${workspace.name}".\n\n` +
+          `This is the URL of the page that owns the reel, e.g.\n` +
+          `https://www.facebook.com/YourBrandPageName\n\n` +
+          `You only need to enter this once per workspace. It will be used for ` +
+          `every future Facebook metrics fetch in this workspace.\n\n` +
+          `Paste the page URL below (or leave blank to skip and try direct scraping):`,
+          ''
+        )
+        if (entered && entered.trim()) {
+          fbPageUrl = entered.trim()
+          try {
+            await dbService.updateWorkspace(workspace.id, { facebook_page_url: fbPageUrl })
+            workspace = { ...workspace, facebook_page_url: fbPageUrl }
+          } catch (saveErr) {
+            console.error('Failed to save facebook_page_url on workspace:', saveErr)
+          }
+        }
+      }
+
+      const tasks: Promise<void>[] = []
 
       if (instagramUrl) {
-        const metrics = await invoke('fetch_metrics_with_ai', {
-          url: instagramUrl,
-          apiKey: apifyKey
-        }) as { views: number; likes: number; comments: number; shares: number; engagement_rate: number }
+        tasks.push((async () => {
+          try {
+            const cached = readCache('instagram', instagramUrl)
+            const metrics = cached
+              ? cached
+              : await invoke('fetch_metrics_with_ai', {
+                  url: instagramUrl,
+                  apiKey: apifyKey
+                }) as CachedMetric
 
-        platformMetrics.instagram = {
-          views: metrics.views || 0,
-          likes: metrics.likes || 0,
-          comments: metrics.comments || 0,
-          shares: metrics.shares || 0,
-          engagement_rate: metrics.engagement_rate || 0,
-          last_updated: new Date().toISOString()
-        }
+            if (!cached) writeCache('instagram', instagramUrl, metrics)
+
+            platformMetrics.instagram = {
+              views: metrics.views || 0,
+              likes: metrics.likes || 0,
+              comments: metrics.comments || 0,
+              shares: metrics.shares || 0,
+              engagement_rate: metrics.engagement_rate || 0,
+              last_updated: new Date().toISOString()
+            }
+            successes.push(cached ? 'Instagram (cached)' : 'Instagram')
+            await saveMetrics()
+          } catch (err: any) {
+            console.error('Instagram fetch failed:', err)
+            failures.push({ platform: 'Instagram', error: err?.toString?.() || String(err) })
+          }
+        })())
       }
 
       if (facebookUrl) {
-        const metrics = await invoke('fetch_metrics_with_ai', {
-          url: facebookUrl,
-          apiKey: apifyKey
-        }) as { views: number; likes: number; comments: number; shares: number; engagement_rate: number }
+        tasks.push((async () => {
+          try {
+            const cached = readCache('facebook', facebookUrl)
+            let metrics: CachedMetric
+            let fromCache = false
 
-        platformMetrics.facebook = {
-          views: metrics.views || 0,
-          likes: metrics.likes || 0,
-          comments: metrics.comments || 0,
-          shares: metrics.shares || 0,
-          engagement_rate: metrics.engagement_rate || 0,
-          last_updated: new Date().toISOString()
-        }
+            if (cached) {
+              metrics = cached
+              fromCache = true
+            } else if (fbPageUrl) {
+              metrics = await invoke('fetch_facebook_metrics_via_page_url', {
+                targetUrl: facebookUrl,
+                pageUrl: fbPageUrl,
+                apiKey: apifyKey,
+                knownPostId: job.facebook_post_id ?? null,
+              }) as CachedMetric
+            } else {
+              metrics = await invoke('fetch_metrics_with_ai', {
+                url: facebookUrl,
+                apiKey: apifyKey,
+              }) as CachedMetric
+            }
+
+            if (!fromCache) writeCache('facebook', facebookUrl, metrics)
+
+            platformMetrics.facebook = {
+              views: metrics.views || 0,
+              likes: metrics.likes || 0,
+              comments: metrics.comments || 0,
+              shares: metrics.shares || 0,
+              engagement_rate: metrics.engagement_rate || 0,
+              last_updated: new Date().toISOString()
+            }
+
+            const returnedId = metrics.postId ?? null
+            if (returnedId && returnedId !== (job.facebook_post_id ?? null)) {
+              jobFieldUpdates.facebook_post_id = returnedId
+            }
+
+            successes.push(fromCache ? 'Facebook (cached)' : 'Facebook')
+            await saveMetrics()
+          } catch (err: any) {
+            console.error('Facebook fetch failed:', err)
+            failures.push({ platform: 'Facebook', error: err?.toString?.() || String(err) })
+          }
+        })())
       }
-      
-      await updateJob(job.id, {
-        live_metrics: platformMetrics.instagram || platformMetrics.facebook || null,
-        platform_metrics: platformMetrics,
-      })
-      alert('✅ Live metrics fetched from Apify!')
+
+      await Promise.all(tasks)
+
+      if (failures.length === 0) {
+        alert(`✅ Live metrics fetched!\n\nSucceeded: ${successes.join(', ')}`)
+      } else if (successes.length === 0) {
+        const errorDetails = failures.map(f => `— ${f.platform} —\n${f.error}`).join('\n\n')
+        alert(`❌ Failed to fetch metrics.\n\n${errorDetails}`)
+      } else {
+        const errorDetails = failures.map(f => `— ${f.platform} —\n${f.error}`).join('\n\n')
+        alert(
+          `⚠️ Partial success.\n\n` +
+          `Succeeded: ${successes.join(', ')}\n\n` +
+          `Failed:\n${errorDetails}`
+        )
+      }
     } catch (error: any) {
-      console.error('Failed to fetch metrics:', error)
-      alert(`Failed to fetch metrics: ${error?.toString?.()?.includes('Unsupported') ? error : 'Check your Apify token and make sure the post URL is public.'}`)
+      console.error('handleFetchMetrics outer failure:', error)
+      alert(`Unexpected error fetching metrics:\n\n${error?.toString?.() || String(error)}`)
     } finally {
       setIsFetchingMetrics(false)
+      markMetricsFetchEnd(job.id)
     }
   }
-  
+
+  const parseFileLinks = (raw: string | null | undefined): FileLink[] => {
+    if (!raw) return []
+    try {
+      const parsed = JSON.parse(raw)
+      return Array.isArray(parsed) ? parsed : []
+    } catch {
+      return []
+    }
+  }
+
+  const persistFileLinks = async (links: FileLink[]) => {
+    if (!job) return
+    await updateJob(job.id, {
+      file_links: links.length > 0 ? JSON.stringify(links) : null,
+    })
+  }
+
+  const handleAddLocalFiles = async () => {
+    if (!job) return
+    try {
+      const selected = await openFileDialog({
+        multiple: true,
+        title: 'Attach files to this brief',
+      })
+      if (!selected) return
+      const paths = Array.isArray(selected) ? selected : [selected]
+      const additions: FileLink[] = paths
+        .filter((p): p is string => typeof p === 'string' && p.length > 0)
+        .map((p) => ({ name: basenameOf(p), url: p, type: 'other' as const }))
+      if (additions.length === 0) return
+      const existing = parseFileLinks(job.file_links)
+      await persistFileLinks([...existing, ...additions])
+    } catch (err) {
+      console.error('Failed to pick file(s):', err)
+    }
+  }
+
+  const handleAddUrlLink = async () => {
+    if (!job) return
+    const url = newLinkUrl.trim()
+    const name = newLinkName.trim()
+    if (!url || !name) return
+    const existing = parseFileLinks(job.file_links)
+    const addition: FileLink = { name, url, type: inferLinkType(url) }
+    await persistFileLinks([...existing, addition])
+    setNewLinkName('')
+    setNewLinkUrl('')
+  }
+
+  const handleRemoveLink = async (index: number) => {
+    if (!job) return
+    const existing = parseFileLinks(job.file_links)
+    if (index < 0 || index >= existing.length) return
+    const next = existing.filter((_, i) => i !== index)
+    await persistFileLinks(next)
+  }
+
   const displayJob = isEditing ? editedJob : job
 
   const renderFieldValue = (field: CustomField) => {
@@ -203,7 +401,7 @@ export function JobDetail({ job: jobProp, open, onOpenChange }: JobDetailProps) 
         return field.value
       }
     }
-    return field.value || 'â€”'
+    return field.value || '—'
   }
 
   const renderCustomFieldInput = (field: CustomField) => {
@@ -421,30 +619,131 @@ export function JobDetail({ job: jobProp, open, onOpenChange }: JobDetailProps) 
           </div>
           
           <div className="space-y-2">
-            <Label>File Links</Label>
-            {job.file_links ? (
-              <div className="space-y-2">
-                {JSON.parse(job.file_links).map((link: { name: string; url: string }, i: number) => (
-                  <button
-                    key={i}
-                    onClick={async () => {
-                      try {
-                        await invoke('open_file_or_url', { path: link.url })
-                      } catch (e) {
-                        console.error('Failed to open file:', e)
-                        window.open(link.url, '_blank')
-                      }
-                    }}
-                    className="flex items-center gap-2 text-sm text-primary hover:underline cursor-pointer w-full text-left"
-                  >
-                    <ExternalLink className="h-4 w-4 flex-shrink-0" />
-                    {link.name}
-                  </button>
-                ))}
+            <Label>File Attachments</Label>
+            {(() => {
+              const links = parseFileLinks(job.file_links)
+              if (links.length === 0) {
+                return <p className="text-sm text-muted-foreground">No file attachments yet</p>
+              }
+              return (
+                <div className="space-y-1">
+                  {links.map((link, i) => (
+                    <div
+                      key={i}
+                      className="group flex items-center gap-2 rounded-md border border-transparent hover:border-border hover:bg-accent/30 px-2 py-1.5"
+                    >
+                      <button
+                        onClick={async () => {
+                          try {
+                            await invoke('open_file_or_url', { path: link.url })
+                          } catch (e) {
+                            console.error('Failed to open file:', e)
+
+                            if (isHttpUrl(link.url)) {
+                              const opened = window.open(link.url, '_blank')
+                              if (!opened) {
+                                const shouldCopy = confirm(
+                                  `Could not open the link automatically.\n\n${link.url}\n\n` +
+                                  `Click OK to copy the URL to your clipboard so you can paste it into your browser.`
+                                )
+                                if (shouldCopy) {
+                                  try { await navigator.clipboard.writeText(link.url) } catch { }
+                                }
+                              }
+                            } else {
+                              alert(
+                                `Could not open the file:\n${link.url}\n\n` +
+                                `This can happen for a few reasons:\n\n` +
+                                `  • The file has been moved, renamed, or deleted since it was attached.\n` +
+                                `  • You're on a work or school computer with security software (AppLocker, ` +
+                                `Defender Controlled Folder Access, Microsoft Purview, or similar) that ` +
+                                `blocks apps from opening files outside an approved list. This is common ` +
+                                `on corporate machines.\n` +
+                                `  • No app is registered on this computer to open this type of file.\n\n` +
+                                `What to try:\n\n` +
+                                `  1. Open the file manually to confirm it still exists at the path above.\n` +
+                                `  2. If you're on a corporate computer and the file opens fine manually, ` +
+                                `your IT policy is blocking Content Hub from opening it directly. In that ` +
+                                `case, upload the file to Google Drive, Dropbox, SharePoint, or frame.io ` +
+                                `instead and paste the share URL into the brief using the "cloud URL" option. ` +
+                                `Cloud URLs open in your browser and work in locked-down environments.\n` +
+                                `  3. Ask IT to add Content Hub to the approved applications list if you ` +
+                                `need local-file support on this machine.`
+                              )
+                            }
+                          }
+                        }}
+                        className="flex items-center gap-2 text-sm text-primary hover:underline cursor-pointer flex-1 min-w-0 text-left"
+                        title={link.url}
+                      >
+                        {isHttpUrl(link.url) ? (
+                          <Link className="h-4 w-4 flex-shrink-0" />
+                        ) : (
+                          <FileText className="h-4 w-4 flex-shrink-0" />
+                        )}
+                        <span className="truncate">{link.name}</span>
+                      </button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                        title="Remove attachment"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          void handleRemoveLink(i)
+                        }}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )
+            })()}
+
+            <div className="pt-2 border-t space-y-3">
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">Attach files from your computer</p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  onClick={handleAddLocalFiles}
+                >
+                  <Upload className="h-3 w-3 mr-2" />
+                  Choose files…
+                </Button>
               </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">No file links</p>
-            )}
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">Or paste a cloud URL (Google Drive, Dropbox, frame.io, etc.)</p>
+                <Input
+                  placeholder="Display name (e.g. 'Hero shot v3')"
+                  value={newLinkName}
+                  onChange={(e) => setNewLinkName(e.target.value)}
+                  className="h-8 text-sm"
+                />
+                <div className="grid grid-cols-[1fr,auto] gap-2">
+                  <Input
+                    placeholder="https://..."
+                    value={newLinkUrl}
+                    onChange={(e) => setNewLinkUrl(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void handleAddUrlLink() } }}
+                    className="h-8 text-sm"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleAddUrlLink}
+                    disabled={!newLinkUrl.trim() || !newLinkName.trim()}
+                  >
+                    Add URL
+                  </Button>
+                </div>
+              </div>
+            </div>
           </div>
           
           <div className="space-y-3 pt-4 border-t">
@@ -520,7 +819,7 @@ export function JobDetail({ job: jobProp, open, onOpenChange }: JobDetailProps) 
               {isEditing ? (
                 <div className="space-y-3">
                   <div className="space-y-2">
-                    <Label className="text-xs text-muted-foreground">Instagram URL</Label>
+                    <Label className="text-xs text-muted-foreground">Instagram/Tiktok URL</Label>
                     <Input
                       value={editedJob.instagram_live_url || ''}
                       onChange={(e) => setEditedJob({ ...editedJob, instagram_live_url: e.target.value })}
@@ -682,7 +981,7 @@ export function JobDetail({ job: jobProp, open, onOpenChange }: JobDetailProps) 
                             custom_fields: job.custom_fields,
                           })
                           setShowCopyMenu(false)
-                          alert(`Copied to "${w.name}" â†’ ${job.stage}`)
+                          alert(`Copied to "${w.name}" → ${job.stage}`)
                         } catch (e) {
                           console.error('Copy failed:', e)
                           alert('Failed to copy job')

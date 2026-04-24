@@ -3,7 +3,6 @@
 @tailwind utilities;
 
 @layer base {
-  /* Dark mode (default) */
   :root {
     --background: 222 28% 12%;
     --foreground: 210 32% 94%;
@@ -27,8 +26,6 @@
     --radius: 0.5rem;
   }
 
-  /* Light mode — palette inspired by the logo icon
-     Purple/violet primary, warm coral accent, soft blue-gray neutrals */
   .light {
     --background: 240 20% 97%;
     --foreground: 240 10% 12%;
@@ -59,9 +56,18 @@
   }
   body {
     @apply text-foreground;
+    color: var(--workspace-font-override, hsl(var(--foreground)));
     background:
       radial-gradient(circle at top left, hsla(258, 70%, 62%, 0.12), transparent 32%),
       radial-gradient(circle at top right, hsla(196, 80%, 62%, 0.1), transparent 28%),
-      linear-gradient(180deg, hsl(var(--background)) 0%, hsl(222 24% 15%) 100%);
+      linear-gradient(180deg, var(--workspace-background-override, hsl(var(--background))) 0%, var(--workspace-background-override, hsl(222 24% 15%)) 100%);
   }
+  .bg-background { background-color: var(--workspace-background-override, hsl(var(--background))) !important; }
+  .text-foreground { color: var(--workspace-font-override, hsl(var(--foreground))) !important; }
+  .bg-primary, .hover\:bg-primary:hover, .border-primary, .ring-primary {
+    background-color: var(--workspace-primary-override, hsl(var(--primary))) !important;
+    border-color: var(--workspace-primary-override, hsl(var(--primary))) !important;
+    --tw-ring-color: var(--workspace-primary-override, hsl(var(--primary))) !important;
+  }
+  .text-primary { color: var(--workspace-primary-override, hsl(var(--primary))) !important; }
 }

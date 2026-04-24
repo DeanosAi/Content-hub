@@ -42,9 +42,6 @@ export function Sidebar({ currentView, onViewChange }: SidebarProps) {
   }, [loadWorkspaces])
   
   const handleAddWorkspace = async () => {
-    console.log('handleAddWorkspace called', newWorkspaceName.trim())
-    console.log('Database connected:', dbService.isConnected())
-    
     if (!dbService.isConnected()) {
       alert('Database not connected. Please refresh the page.')
       return
@@ -53,7 +50,6 @@ export function Sidebar({ currentView, onViewChange }: SidebarProps) {
     if (newWorkspaceName.trim()) {
       try {
         await addWorkspace(newWorkspaceName.trim(), newWorkspaceColor)
-        console.log('Workspace created successfully')
         setNewWorkspaceName('')
         setDialogOpen(false)
       } catch (error) {
@@ -61,7 +57,6 @@ export function Sidebar({ currentView, onViewChange }: SidebarProps) {
         alert('Failed to create workspace. Check console for details.')
       }
     } else {
-      console.log('Workspace name is empty')
       alert('Please enter a workspace name')
     }
   }
@@ -90,13 +85,9 @@ export function Sidebar({ currentView, onViewChange }: SidebarProps) {
   
   const handleDragEnd = async (result: DropResult) => {
     if (!result.destination) return
-    
     const items = Array.from(workspaces)
     const [reorderedItem] = items.splice(result.source.index, 1)
     items.splice(result.destination.index, 0, reorderedItem)
-    
-    // Update local state immediately for smooth UI
-    // Then persist to database
     const orderedIds = items.map(w => w.id)
     await reorderWorkspaces(orderedIds)
   }
@@ -111,15 +102,26 @@ export function Sidebar({ currentView, onViewChange }: SidebarProps) {
 
   if (!mounted) return null
 
+  const activeWorkspace = workspaces.find(w => w.id === selectedWorkspace)
+
   return (
     <aside className="w-64 border-r bg-card flex flex-col">
-      <div className="p-4 border-b flex items-center gap-2">
-        <Briefcase className="h-5 w-5 text-primary" />
+      <div className="p-4 border-b flex items-center gap-3">
+        {activeWorkspace?.brand_logo_data_url ? (
+          <img
+            src={activeWorkspace.brand_logo_data_url}
+            alt="Workspace logo"
+            className="h-8 w-8 rounded object-contain bg-white/5 p-1"
+          />
+        ) : (
+          <div className="h-8 w-8 rounded-lg bg-primary/15 flex items-center justify-center">
+            <Briefcase className="h-5 w-5 text-primary" />
+          </div>
+        )}
         <h1 className="text-xl font-bold">Content Hub</h1>
       </div>
 
       <div className="flex-1 overflow-auto">
-        {/* Navigation */}
         <div className="p-4">
           <nav className="space-y-1">
             {navItems.map((item) => {
@@ -196,11 +198,7 @@ export function Sidebar({ currentView, onViewChange }: SidebarProps) {
           <DragDropContext onDragEnd={handleDragEnd}>
             <Droppable droppableId="workspaces">
               {(provided) => (
-                <div
-                  ref={provided.innerRef}
-                  {...provided.droppableProps}
-                  className="space-y-1"
-                >
+                <div ref={provided.innerRef} {...provided.droppableProps} className="space-y-1">
                   {workspaces.map((workspace, index) => (
                     <Draggable key={workspace.id} draggableId={String(workspace.id)} index={index}>
                       {(provided, snapshot) => (
@@ -209,28 +207,15 @@ export function Sidebar({ currentView, onViewChange }: SidebarProps) {
                           {...provided.draggableProps}
                           className={cn(
                             'group flex items-center rounded-md text-sm transition-colors',
-                            selectedWorkspace === workspace.id
-                              ? 'bg-accent text-accent-foreground'
-                              : 'hover:bg-accent/50',
+                            selectedWorkspace === workspace.id ? 'bg-accent text-accent-foreground' : 'hover:bg-accent/50',
                             snapshot.isDragging && 'shadow-lg ring-2 ring-primary'
                           )}
                         >
-                          {/* Drag Handle */}
-                          <div
-                            {...provided.dragHandleProps}
-                            className="p-2 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
+                          <div {...provided.dragHandleProps} className="p-2 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity">
                             <GripVertical className="h-4 w-4 text-muted-foreground" />
                           </div>
-                          
-                          <button
-                            onClick={() => setSelectedWorkspace(workspace.id)}
-                            className="flex items-center gap-3 flex-1 text-left py-2 pr-2"
-                          >
-                            <span
-                              className="w-2 h-2 rounded-full"
-                              style={{ backgroundColor: workspace.color }}
-                            />
+                          <button onClick={() => setSelectedWorkspace(workspace.id)} className="flex items-center gap-3 flex-1 text-left py-2 pr-2">
+                            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: workspace.color }} />
                             {editingWorkspace === workspace.id ? (
                               <div className="flex items-center gap-2 flex-1">
                                 <Input
@@ -251,23 +236,12 @@ export function Sidebar({ currentView, onViewChange }: SidebarProps) {
                                         e.stopPropagation()
                                         setEditColor(color)
                                       }}
-                                      className={cn(
-                                        'w-4 h-4 rounded-full border',
-                                        editColor === color ? 'border-white' : 'border-transparent'
-                                      )}
+                                      className={cn('w-4 h-4 rounded-full border', editColor === color ? 'border-white' : 'border-transparent')}
                                       style={{ backgroundColor: color }}
                                     />
                                   ))}
                                 </div>
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  className="h-6 w-6"
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    handleSaveEdit()
-                                  }}
-                                >
+                                <Button size="icon" variant="ghost" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); handleSaveEdit() }}>
                                   <Plus className="h-3 w-3" />
                                 </Button>
                               </div>
@@ -275,16 +249,10 @@ export function Sidebar({ currentView, onViewChange }: SidebarProps) {
                               <span className="truncate">{workspace.name}</span>
                             )}
                           </button>
-                          
                           {editingWorkspace !== workspace.id && (
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <Button 
-                                  variant="ghost" 
-                                  size="icon" 
-                                  className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity mr-1"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
+                                <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity mr-1" onClick={(e) => e.stopPropagation()}>
                                   <MoreHorizontal className="h-3 w-3" />
                                 </Button>
                               </DropdownMenuTrigger>
@@ -293,10 +261,7 @@ export function Sidebar({ currentView, onViewChange }: SidebarProps) {
                                   <Pencil className="h-4 w-4 mr-2" />
                                   Rename
                                 </DropdownMenuItem>
-                                <DropdownMenuItem 
-                                  onClick={() => handleDeleteWorkspace(workspace.id)}
-                                  className="text-destructive"
-                                >
+                                <DropdownMenuItem onClick={() => handleDeleteWorkspace(workspace.id)} className="text-destructive">
                                   <Trash2 className="h-4 w-4 mr-2" />
                                   Delete
                                 </DropdownMenuItem>

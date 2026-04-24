@@ -5,9 +5,15 @@ export interface Workspace {
   sort_order: number
   created_at: string
   is_active: boolean
+  facebook_page_url?: string | null
+  instagram_page_url?: string | null
+  brand_background_color?: string | null
+  brand_highlight_color?: string | null
+  brand_font_color?: string | null
+  brand_logo_data_url?: string | null
 }
 
-export type JobStage = string // Now dynamic based on workspace columns
+export type JobStage = string
 export type Platform = 'instagram' | 'tiktok' | 'youtube' | 'facebook'
 export type CustomFieldType = 'text' | 'textarea' | 'date'
 export type CalendarView = 'week' | 'month' | 'year'
@@ -43,6 +49,7 @@ export interface Job {
   live_metrics: PlatformMetric | null
   instagram_live_url?: string | null
   facebook_live_url?: string | null
+  facebook_post_id?: string | null
   platform_metrics?: Partial<Record<Platform, PlatformMetric>> | null
   custom_fields: CustomField[] | null
   created_at: string
@@ -55,6 +62,7 @@ export interface WorkspaceColumn {
   column_id: string
   title: string
   color: string
+  background_color?: string | null
   sort_order: number
   is_default: boolean
   created_at: string
@@ -111,13 +119,6 @@ export interface CalendarImportItem {
   external_url?: string | null
 }
 
-export interface EventMonthlyReport {
-  monthKey: string
-  title: string
-  summary: string
-  events: CalendarEvent[]
-}
-
 export interface PerformanceMetrics {
   id: number
   job_id: number
@@ -127,7 +128,7 @@ export interface PerformanceMetrics {
   comments: number
   shares: number
   engagement_rate: number
-  posted_at: string
+  posted_at: string | null
   captured_at: string
 }
 
@@ -137,34 +138,37 @@ export interface YouTubeVideoMetrics {
   views: number
   likes: number
   comments: number
-  engagementRate: number
+  engagementRate?: number
   publishedAt: string
 }
 
 export interface InstagramPostMetrics {
-  shortCode: string
+  shortcode?: string
+  shortCode?: string
   caption: string
   likes: number
   comments: number
-  engagementRate: number
-  postedAt: string
-  hashtags: string[]
+  views?: number
+  shares?: number
+  saved?: number
+  postedAt?: string
+  engagementRate?: number
+  hashtags?: string[]
 }
 
-export interface ReportData {
-  id: number
-  workspace_id: number
-  title: string
-  type: 'summary' | 'quarterly'
-  start_date: string
-  end_date: string
+export interface TrendingItem {
+  id: string
+  platform: Platform | 'both'
+  type: 'hashtag' | 'sound' | 'topic' | 'format'
+  name: string
+  popularity_score: number
   metrics: {
-    totalViews: number
-    totalEngagement: number
-    avgEngagementRate: number
+    videoCount?: number
+    postCount?: number
+    avgEngagement?: number
+    totalEngagement?: number
     topPerformingPost: PerformanceMetrics | null
-    platformBreakdown: Record<Platform, { views: number; engagement: number }>
   }
-  created_at: string
-  pdf_path: string | null
+  content_suggestion: string
+  fetched_at: string
 }

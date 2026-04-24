@@ -24,6 +24,32 @@ class DatabaseService {
   isConnected(): boolean {
     return this.db !== null
   }
+
+  private mapColumnBackgroundColor(color: string): string {
+    const map: Record<string, string> = {
+      'bg-slate-500': 'bg-slate-500/10',
+      'bg-gray-500': 'bg-gray-500/10',
+      'bg-red-500': 'bg-red-500/10',
+      'bg-orange-500': 'bg-orange-500/10',
+      'bg-amber-500': 'bg-amber-500/10',
+      'bg-yellow-500': 'bg-yellow-500/10',
+      'bg-lime-500': 'bg-lime-500/10',
+      'bg-green-500': 'bg-green-500/10',
+      'bg-emerald-500': 'bg-emerald-500/10',
+      'bg-teal-500': 'bg-teal-500/10',
+      'bg-cyan-500': 'bg-cyan-500/10',
+      'bg-sky-500': 'bg-sky-500/10',
+      'bg-blue-500': 'bg-blue-500/10',
+      'bg-indigo-500': 'bg-indigo-500/10',
+      'bg-violet-500': 'bg-violet-500/10',
+      'bg-purple-500': 'bg-purple-500/10',
+      'bg-fuchsia-500': 'bg-fuchsia-500/10',
+      'bg-pink-500': 'bg-pink-500/10',
+      'bg-rose-500': 'bg-rose-500/10',
+      'bg-gray-600': 'bg-gray-600/10',
+    }
+    return map[color] || 'bg-muted/40'
+  }
   
   private async initializeTables(): Promise<void> {
     if (!this.db) throw new Error('Database not connected')
@@ -35,7 +61,13 @@ class DatabaseService {
         color TEXT DEFAULT '#8b5cf6',
         sort_order INTEGER DEFAULT 0,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        is_active BOOLEAN DEFAULT 1
+        is_active BOOLEAN DEFAULT 1,
+        facebook_page_url TEXT,
+        instagram_page_url TEXT,
+        brand_background_color TEXT,
+        brand_highlight_color TEXT,
+        brand_font_color TEXT,
+        brand_logo_data_url TEXT
       )
     `)
     
@@ -136,6 +168,7 @@ class DatabaseService {
         column_id TEXT NOT NULL,
         title TEXT NOT NULL,
         color TEXT NOT NULL,
+        background_color TEXT,
         sort_order INTEGER DEFAULT 0,
         is_default BOOLEAN DEFAULT 0,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -172,6 +205,9 @@ class DatabaseService {
     await this.ensureJobsColumns()
     await this.ensureCalendarEventColumns()
     await this.ensureWorkspaceColumns()
+    await this.ensureWorkspacePageUrlColumns()
+    await this.ensureWorkspaceBrandingColumns()
+    await this.ensureWorkspaceColumnBackgroundColors()
     await this.seedRecurringCalendarEvents()
     
     console.log('Database initialization complete')
@@ -186,6 +222,7 @@ class DatabaseService {
       const hasLiveMetrics = columns.some(col => col.name === 'live_metrics_json')
       const hasInstagramLiveUrl = columns.some(col => col.name === 'instagram_live_url')
       const hasFacebookLiveUrl = columns.some(col => col.name === 'facebook_live_url')
+      const hasFacebookPostId = columns.some(col => col.name === 'facebook_post_id')
       const hasPlatformMetrics = columns.some(col => col.name === 'platform_metrics_json')
       const hasCustomFields = columns.some(col => col.name === 'custom_fields_json')
       
@@ -193,6 +230,7 @@ class DatabaseService {
       if (!hasLiveMetrics) await this.db.execute('ALTER TABLE jobs ADD COLUMN live_metrics_json TEXT')
       if (!hasInstagramLiveUrl) await this.db.execute('ALTER TABLE jobs ADD COLUMN instagram_live_url TEXT')
       if (!hasFacebookLiveUrl) await this.db.execute('ALTER TABLE jobs ADD COLUMN facebook_live_url TEXT')
+      if (!hasFacebookPostId) await this.db.execute('ALTER TABLE jobs ADD COLUMN facebook_post_id TEXT')
       if (!hasPlatformMetrics) await this.db.execute('ALTER TABLE jobs ADD COLUMN platform_metrics_json TEXT')
       if (!hasCustomFields) await this.db.execute('ALTER TABLE jobs ADD COLUMN custom_fields_json TEXT')
     } catch (error) {
@@ -223,20 +261,66 @@ class DatabaseService {
     
     if (existing[0]?.count === 0) {
       const defaults = [
-        { column_id: 'brief', title: 'Brief', color: 'bg-slate-500', sort_order: 0 },
-        { column_id: 'production', title: 'In Production', color: 'bg-blue-500', sort_order: 1 },
-        { column_id: 'ready', title: 'Ready for Posting', color: 'bg-amber-500', sort_order: 2 },
-        { column_id: 'posted', title: 'Posted', color: 'bg-emerald-500', sort_order: 3 },
-        { column_id: 'archive', title: 'Archive', color: 'bg-gray-600', sort_order: 4 },
+        { column_id: 'brief', title: 'Brief', color: 'bg-slate-500', background_color: 'bg-slate-500/10', sort_order: 0 },
+        { column_id: 'production', title: 'In Production', color: 'bg-blue-500', background_color: 'bg-blue-500/10', sort_order: 1 },
+        { column_id: 'ready', title: 'Ready for Posting', color: 'bg-amber-500', background_color: 'bg-amber-500/10', sort_order: 2 },
+        { column_id: 'posted', title: 'Posted', color: 'bg-emerald-500', background_color: 'bg-emerald-500/10', sort_order: 3 },
+        { column_id: 'archive', title: 'Archive', color: 'bg-gray-600', background_color: 'bg-gray-600/10', sort_order: 4 },
       ]
       
       for (const col of defaults) {
         await this.db.execute(
-          `INSERT INTO workspace_columns (workspace_id, column_id, title, color, sort_order, is_default)
-           VALUES (?, ?, ?, ?, ?, ?)`,
-          [workspaceId, col.column_id, col.title, col.color, col.sort_order, 1]
+          `INSERT INTO workspace_columns (workspace_id, column_id, title, color, background_color, sort_order, is_default)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          [workspaceId, col.column_id, col.title, col.color, col.background_color, col.sort_order, 1]
         )
       }
+    }
+  }
+  
+  private async ensureWorkspacePageUrlColumns(): Promise<void> {
+    if (!this.db) return
+    try {
+      const columns: any[] = await this.db.select('PRAGMA table_info(workspaces)')
+      const hasFacebook = columns.some(col => col.name === 'facebook_page_url')
+      const hasInstagram = columns.some(col => col.name === 'instagram_page_url')
+      if (!hasFacebook) await this.db.execute('ALTER TABLE workspaces ADD COLUMN facebook_page_url TEXT')
+      if (!hasInstagram) await this.db.execute('ALTER TABLE workspaces ADD COLUMN instagram_page_url TEXT')
+    } catch (error) {
+      console.error('Failed to ensure workspace page-url columns:', error)
+    }
+  }
+
+  private async ensureWorkspaceBrandingColumns(): Promise<void> {
+    if (!this.db) return
+    try {
+      const columns: any[] = await this.db.select('PRAGMA table_info(workspaces)')
+      const wanted = ['brand_background_color', 'brand_highlight_color', 'brand_font_color', 'brand_logo_data_url']
+      for (const col of wanted) {
+        if (!columns.some(existing => existing.name === col)) {
+          await this.db.execute(`ALTER TABLE workspaces ADD COLUMN ${col} TEXT`)
+        }
+      }
+    } catch (error) {
+      console.error('Failed to ensure workspace branding columns:', error)
+    }
+  }
+
+  private async ensureWorkspaceColumnBackgroundColors(): Promise<void> {
+    if (!this.db) return
+    try {
+      const columns: any[] = await this.db.select('PRAGMA table_info(workspace_columns)')
+      if (!columns.some(col => col.name === 'background_color')) {
+        await this.db.execute('ALTER TABLE workspace_columns ADD COLUMN background_color TEXT')
+      }
+      const existing: any[] = await this.db.select('SELECT id, color, background_color FROM workspace_columns')
+      for (const col of existing) {
+        if (!col.background_color) {
+          await this.db.execute('UPDATE workspace_columns SET background_color = ? WHERE id = ?', [this.mapColumnBackgroundColor(col.color), col.id])
+        }
+      }
+    } catch (error) {
+      console.error('Failed to ensure workspace column background colors:', error)
     }
   }
   
@@ -245,10 +329,7 @@ class DatabaseService {
     
     try {
       await this.db.execute('PRAGMA foreign_keys = OFF')
-      await this.db.execute(`
-        INSERT INTO jobs (workspace_id, title, platform) 
-        VALUES (0, '__migration_test__', '["instagram","tiktok"]')
-      `)
+      await this.db.execute(`INSERT INTO jobs (workspace_id, title, platform) VALUES (0, '__migration_test__', '["instagram","tiktok"]')`)
       await this.db.execute(`DELETE FROM jobs WHERE title = '__migration_test__'`)
       await this.db.execute('PRAGMA foreign_keys = ON')
       return
@@ -290,16 +371,13 @@ class DatabaseService {
       try {
         await this.db.execute('DROP TABLE IF EXISTS jobs_new')
         await this.db.execute(`DELETE FROM jobs WHERE title = '__migration_test__'`)
-      } catch {
-        // ignore
-      }
+      } catch {}
       throw error
     }
   }
 
   private async ensureCalendarEventColumns(): Promise<void> {
     if (!this.db) return
-
     try {
       const columns: any[] = await this.db.select('PRAGMA table_info(calendar_events)')
       const hasColor = columns.some(col => col.name === 'color')
@@ -313,37 +391,15 @@ class DatabaseService {
 
   private async seedRecurringCalendarEvents(): Promise<void> {
     if (!this.db) return
-
     try {
-      const existing: any[] = await this.db.select(
-        `SELECT COUNT(*) as count FROM calendar_events WHERE source = 'seeded'`
-      )
+      const existing: any[] = await this.db.select(`SELECT COUNT(*) as count FROM calendar_events WHERE source = 'seeded'`)
       if ((existing[0]?.count || 0) > 20) return
-
       const currentYear = new Date().getFullYear()
       const years = [currentYear, currentYear + 1]
       for (const year of years) {
         const seeded = this.buildAustralianRecurringEvents(year)
         for (const event of seeded) {
-          await this.db.execute(
-            `INSERT INTO calendar_events (workspace_id, title, description, event_date, end_date, start_time, end_time, category, location, source, external_url, linked_job_id, metadata_json)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [
-              null,
-              event.title,
-              event.description,
-              event.event_date,
-              event.end_date,
-              event.start_time,
-              event.end_time,
-              event.category,
-              event.location,
-              event.source,
-              event.external_url,
-              event.linked_job_id,
-              event.metadata_json,
-            ]
-          )
+          await this.db.execute(`INSERT INTO calendar_events (workspace_id, title, description, event_date, end_date, start_time, end_time, category, location, source, external_url, linked_job_id, metadata_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [null, event.title, event.description, event.event_date, event.end_date, event.start_time, event.end_time, event.category, event.location, event.source, event.external_url, event.linked_job_id, event.metadata_json])
         }
       }
     } catch (error) {
@@ -357,7 +413,6 @@ class DatabaseService {
     goodFriday.setDate(easter.getDate() - 2)
     const easterMonday = new Date(easter)
     easterMonday.setDate(easter.getDate() + 1)
-
     return [
       this.buildSeedEvent('New Year\'s Day', `${year}-01-01`, 'National', 'National public holiday in Australia'),
       this.buildSeedEvent('Australia Day', `${year}-01-26`, 'National', 'National day of Australia'),
@@ -377,23 +432,7 @@ class DatabaseService {
   }
 
   private buildSeedEvent(title: string, eventDate: string, category: string, description: string): Omit<CalendarEvent, 'id' | 'created_at' | 'updated_at'> {
-    return {
-      workspace_id: null,
-      title,
-      description,
-      event_date: eventDate,
-      end_date: null,
-      start_time: null,
-      end_time: null,
-      category,
-      location: 'Australia',
-      color: this.getCategoryColor(category),
-      recurrence: 'year',
-      source: 'seeded',
-      external_url: null,
-      linked_job_id: null,
-      metadata_json: JSON.stringify({ seeded: true }),
-    }
+    return { workspace_id: null, title, description, event_date: eventDate, end_date: null, start_time: null, end_time: null, category, location: 'Australia', color: this.getCategoryColor(category), recurrence: 'year', source: 'seeded', external_url: null, linked_job_id: null, metadata_json: JSON.stringify({ seeded: true }) }
   }
 
   private getCategoryColor(category: string): string {
@@ -426,48 +465,39 @@ class DatabaseService {
 
   private nthWeekdayOfMonth(year: number, monthIndex: number, weekday: number, occurrence: number): string {
     const date = new Date(year, monthIndex, 1)
-    while (date.getDay() !== weekday) {
-      date.setDate(date.getDate() + 1)
-    }
+    while (date.getDay() !== weekday) date.setDate(date.getDate() + 1)
     date.setDate(date.getDate() + (occurrence - 1) * 7)
     return this.toDateString(date)
   }
 
   private lastWeekdayOfMonth(year: number, monthIndex: number, weekday: number): string {
     const date = new Date(year, monthIndex + 1, 0)
-    while (date.getDay() !== weekday) {
-      date.setDate(date.getDate() - 1)
-    }
+    while (date.getDay() !== weekday) date.setDate(date.getDate() - 1)
     return this.toDateString(date)
   }
 
-  private toDateString(date: Date): string {
-    return date.toISOString().split('T')[0]
-  }
+  private toDateString(date: Date): string { return date.toISOString().split('T')[0] }
   
   async getWorkspaces(): Promise<Workspace[]> {
     if (!this.db) throw new Error('Database not connected')
-    try {
-      return await this.db.select('SELECT * FROM workspaces WHERE is_active = 1 ORDER BY sort_order ASC, created_at DESC')
-    } catch {
-      return await this.db.select('SELECT * FROM workspaces WHERE is_active = 1 ORDER BY created_at DESC')
-    }
+    try { return await this.db.select('SELECT * FROM workspaces WHERE is_active = 1 ORDER BY sort_order ASC, created_at DESC') }
+    catch { return await this.db.select('SELECT * FROM workspaces WHERE is_active = 1 ORDER BY created_at DESC') }
+  }
+  
+  async getWorkspace(id: number): Promise<Workspace | null> {
+    if (!this.db) throw new Error('Database not connected')
+    const rows: Workspace[] = await this.db.select('SELECT * FROM workspaces WHERE id = ?', [id])
+    return rows[0] ?? null
   }
   
   async createWorkspace(name: string, color: string = '#8b5cf6'): Promise<number> {
     if (!this.db) throw new Error('Database not connected')
     try {
       try {
-        const result = await this.db.execute(
-          'INSERT INTO workspaces (name, color, sort_order) VALUES (?, ?, ?)',
-          [name, color, 0]
-        )
+        const result = await this.db.execute('INSERT INTO workspaces (name, color, sort_order) VALUES (?, ?, ?)', [name, color, 0])
         return result.lastInsertId ?? 0
       } catch {
-        const result = await this.db.execute(
-          'INSERT INTO workspaces (name, color) VALUES (?, ?)',
-          [name, color]
-        )
+        const result = await this.db.execute('INSERT INTO workspaces (name, color) VALUES (?, ?)', [name, color])
         return result.lastInsertId ?? 0
       }
     } catch (error) {
@@ -491,13 +521,9 @@ class DatabaseService {
   async reorderWorkspaces(orderedIds: number[]): Promise<void> {
     if (!this.db) throw new Error('Database not connected')
     try {
-      for (let i = 0; i < orderedIds.length; i++) {
-        await this.db.execute('UPDATE workspaces SET sort_order = ? WHERE id = ?', [i, orderedIds[i]])
-      }
+      for (let i = 0; i < orderedIds.length; i++) await this.db.execute('UPDATE workspaces SET sort_order = ? WHERE id = ?', [i, orderedIds[i]])
     } catch (error: any) {
-      if (error?.message?.includes('no such column') || error?.toString?.()?.includes('no such column')) {
-        return
-      }
+      if (error?.message?.includes('no such column') || error?.toString?.()?.includes('no such column')) return
       throw error
     }
   }
@@ -505,35 +531,12 @@ class DatabaseService {
   async getJobs(workspaceId: number): Promise<Job[]> {
     if (!this.db) throw new Error('Database not connected')
     try {
-      const rows: any[] = await this.db.select(
-        'SELECT * FROM jobs WHERE workspace_id = ? ORDER BY created_at DESC, id DESC',
-        [workspaceId]
-      )
-      return rows.map((row: any) => ({
-        ...row,
-        platform: row.platform ? JSON.parse(row.platform) : null,
-        live_metrics: row.live_metrics_json ? JSON.parse(row.live_metrics_json) : null,
-        instagram_live_url: row.instagram_live_url ?? null,
-        facebook_live_url: row.facebook_live_url ?? null,
-        platform_metrics: row.platform_metrics_json ? JSON.parse(row.platform_metrics_json) : null,
-        custom_fields: row.custom_fields_json ? JSON.parse(row.custom_fields_json) : null
-      }))
+      const rows: any[] = await this.db.select('SELECT * FROM jobs WHERE workspace_id = ? ORDER BY created_at DESC, id DESC', [workspaceId])
+      return rows.map((row: any) => ({ ...row, platform: row.platform ? JSON.parse(row.platform) : null, live_metrics: row.live_metrics_json ? JSON.parse(row.live_metrics_json) : null, instagram_live_url: row.instagram_live_url ?? null, facebook_live_url: row.facebook_live_url ?? null, facebook_post_id: row.facebook_post_id ?? null, platform_metrics: row.platform_metrics_json ? JSON.parse(row.platform_metrics_json) : null, custom_fields: row.custom_fields_json ? JSON.parse(row.custom_fields_json) : null }))
     } catch (error: any) {
       if (error?.message?.includes('no such column')) {
-        const rows: any[] = await this.db.select(
-          'SELECT id, workspace_id, title, description, stage, priority, due_date, platform, target_hashtags, file_links, created_at, updated_at FROM jobs WHERE workspace_id = ? ORDER BY created_at DESC, id DESC',
-          [workspaceId]
-        )
-        return rows.map((row: any) => ({
-          ...row,
-          platform: row.platform ? JSON.parse(row.platform) : null,
-          live_url: null,
-          live_metrics: null,
-          instagram_live_url: null,
-          facebook_live_url: null,
-          platform_metrics: null,
-          custom_fields: null
-        }))
+        const rows: any[] = await this.db.select('SELECT id, workspace_id, title, description, stage, priority, due_date, platform, target_hashtags, file_links, created_at, updated_at FROM jobs WHERE workspace_id = ? ORDER BY created_at DESC, id DESC', [workspaceId])
+        return rows.map((row: any) => ({ ...row, platform: row.platform ? JSON.parse(row.platform) : null, live_url: null, live_metrics: null, instagram_live_url: null, facebook_live_url: null, facebook_post_id: null, platform_metrics: null, custom_fields: null }))
       }
       throw error
     }
@@ -543,35 +546,11 @@ class DatabaseService {
     if (!this.db) throw new Error('Database not connected')
     try {
       try {
-        const result = await this.db.execute(
-          `INSERT INTO jobs (workspace_id, title, description, stage, priority, due_date, platform, target_hashtags, file_links, live_url, live_metrics_json, instagram_live_url, facebook_live_url, platform_metrics_json, custom_fields_json)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [
-            jobData.workspace_id,
-            jobData.title,
-            jobData.description,
-            jobData.stage,
-            jobData.priority,
-            jobData.due_date,
-            jobData.platform ? JSON.stringify(jobData.platform) : null,
-            jobData.target_hashtags,
-            jobData.file_links,
-            jobData.live_url,
-            jobData.live_metrics ? JSON.stringify(jobData.live_metrics) : null,
-            jobData.instagram_live_url ?? null,
-            jobData.facebook_live_url ?? null,
-            jobData.platform_metrics ? JSON.stringify(jobData.platform_metrics) : null,
-            jobData.custom_fields ? JSON.stringify(jobData.custom_fields) : null,
-          ]
-        )
+        const result = await this.db.execute(`INSERT INTO jobs (workspace_id, title, description, stage, priority, due_date, platform, target_hashtags, file_links, live_url, live_metrics_json, instagram_live_url, facebook_live_url, platform_metrics_json, custom_fields_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [jobData.workspace_id, jobData.title, jobData.description, jobData.stage, jobData.priority, jobData.due_date, jobData.platform ? JSON.stringify(jobData.platform) : null, jobData.target_hashtags, jobData.file_links, jobData.live_url, jobData.live_metrics ? JSON.stringify(jobData.live_metrics) : null, jobData.instagram_live_url ?? null, jobData.facebook_live_url ?? null, jobData.platform_metrics ? JSON.stringify(jobData.platform_metrics) : null, jobData.custom_fields ? JSON.stringify(jobData.custom_fields) : null])
         return result.lastInsertId ?? 0
       } catch (error: any) {
         if (error?.message?.includes('no such column') || error?.toString?.()?.includes('no such column')) {
-          const result = await this.db.execute(
-            `INSERT INTO jobs (workspace_id, title, description, stage, priority, due_date, platform, target_hashtags, file_links)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [jobData.workspace_id, jobData.title, jobData.description, jobData.stage, jobData.priority, jobData.due_date, jobData.platform ? JSON.stringify(jobData.platform) : null, jobData.target_hashtags, jobData.file_links]
-          )
+          const result = await this.db.execute(`INSERT INTO jobs (workspace_id, title, description, stage, priority, due_date, platform, target_hashtags, file_links) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, [jobData.workspace_id, jobData.title, jobData.description, jobData.stage, jobData.priority, jobData.due_date, jobData.platform ? JSON.stringify(jobData.platform) : null, jobData.target_hashtags, jobData.file_links])
           return result.lastInsertId ?? 0
         }
         throw error
@@ -587,21 +566,13 @@ class DatabaseService {
     try {
       const processedUpdates: any = { ...updates }
       if (updates.platform) processedUpdates.platform = JSON.stringify(updates.platform)
-      if ('live_metrics' in processedUpdates) {
-        processedUpdates.live_metrics_json = updates.live_metrics ? JSON.stringify(updates.live_metrics) : null
-        delete processedUpdates.live_metrics
-      }
-      if ('platform_metrics' in processedUpdates) {
-        processedUpdates.platform_metrics_json = updates.platform_metrics ? JSON.stringify(updates.platform_metrics) : null
-        delete processedUpdates.platform_metrics
-      }
-      if ('custom_fields' in processedUpdates) {
-        processedUpdates.custom_fields_json = updates.custom_fields ? JSON.stringify(updates.custom_fields) : null
-        delete processedUpdates.custom_fields
-      }
+      if ('live_metrics' in processedUpdates) { processedUpdates.live_metrics_json = updates.live_metrics ? JSON.stringify(updates.live_metrics) : null; delete processedUpdates.live_metrics }
+      if ('platform_metrics' in processedUpdates) { processedUpdates.platform_metrics_json = updates.platform_metrics ? JSON.stringify(updates.platform_metrics) : null; delete processedUpdates.platform_metrics }
+      if ('custom_fields' in processedUpdates) { processedUpdates.custom_fields_json = updates.custom_fields ? JSON.stringify(updates.custom_fields) : null; delete processedUpdates.custom_fields }
       if (updates.live_url !== undefined) processedUpdates.live_url = updates.live_url
       if (updates.instagram_live_url !== undefined) processedUpdates.instagram_live_url = updates.instagram_live_url
       if (updates.facebook_live_url !== undefined) processedUpdates.facebook_live_url = updates.facebook_live_url
+      if (updates.facebook_post_id !== undefined) processedUpdates.facebook_post_id = updates.facebook_post_id
       const fields = Object.keys(processedUpdates).map(key => `${key} = ?`).join(', ')
       const values = Object.values(processedUpdates)
       await this.db.execute(`UPDATE jobs SET ${fields}, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [...values, id])
@@ -614,6 +585,7 @@ class DatabaseService {
         delete processedUpdates.live_metrics_json
         delete processedUpdates.instagram_live_url
         delete processedUpdates.facebook_live_url
+        delete processedUpdates.facebook_post_id
         delete processedUpdates.platform_metrics
         delete processedUpdates.platform_metrics_json
         delete processedUpdates.custom_fields
@@ -622,371 +594,47 @@ class DatabaseService {
         const fields = Object.keys(processedUpdates).map(key => `${key} = ?`).join(', ')
         const values = Object.values(processedUpdates)
         await this.db.execute(`UPDATE jobs SET ${fields}, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [...values, id])
-      } else {
-        throw error
-      }
+      } else throw error
     }
   }
   
-  async deleteJob(id: number): Promise<void> {
+  async deleteJob(id: number): Promise<void> { if (!this.db) throw new Error('Database not connected'); await this.db.execute('DELETE FROM jobs WHERE id = ?', [id]) }
+  async moveJob(id: number, newStage: JobStage): Promise<void> { if (!this.db) throw new Error('Database not connected'); await this.db.execute('UPDATE jobs SET stage = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [newStage, id]) }
+  async getTemplates(): Promise<Template[]> { if (!this.db) throw new Error('Database not connected'); return await this.db.select('SELECT * FROM templates ORDER BY created_at DESC') }
+  async createTemplate(templateData: Omit<Template, 'id' | 'created_at'>): Promise<number> { if (!this.db) throw new Error('Database not connected'); const result = await this.db.execute('INSERT INTO templates (name, description, default_platform, default_hashtags, default_description) VALUES (?, ?, ?, ?, ?)', [templateData.name, templateData.description, templateData.default_platform, templateData.default_hashtags, templateData.default_description]); return result.lastInsertId ?? 0 }
+  async deleteTemplate(id: number): Promise<void> { if (!this.db) throw new Error('Database not connected'); await this.db.execute('DELETE FROM templates WHERE id = ?', [id]) }
+  async getTrendingItems(): Promise<any[]> { if (!this.db) throw new Error('Database not connected'); const rows: any[] = await this.db.select('SELECT * FROM trending_cache ORDER BY avg_engagement DESC, popularity_score DESC'); return rows.map((row: any) => ({ ...row, top_posts: row.top_posts_json ? JSON.parse(row.top_posts_json) : [] })) }
+  async getLastTrendingUpdate(): Promise<string | null> { if (!this.db) throw new Error('Database not connected'); const result: any[] = await this.db.select('SELECT MAX(fetched_at) as last_update FROM trending_cache'); return result[0]?.last_update || null }
+  async clearTrendingCache(): Promise<void> { if (!this.db) throw new Error('Database not connected'); await this.db.execute('DELETE FROM trending_cache') }
+  async saveTrendingItem(item: { platform: string; trend_type: string; name: string; popularity_score: number | null; video_count: number | null; post_count?: number | null; avg_engagement?: number | null; total_engagement?: number | null; suggestion_text: string | null; top_posts?: any[] }): Promise<void> {
     if (!this.db) throw new Error('Database not connected')
-    await this.db.execute('DELETE FROM jobs WHERE id = ?', [id])
-  }
-  
-  async moveJob(id: number, newStage: JobStage): Promise<void> {
-    if (!this.db) throw new Error('Database not connected')
-    await this.db.execute('UPDATE jobs SET stage = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [newStage, id])
-  }
-  
-  async getTemplates(): Promise<Template[]> {
-    if (!this.db) throw new Error('Database not connected')
-    return await this.db.select('SELECT * FROM templates ORDER BY created_at DESC')
-  }
-  
-  async createTemplate(templateData: Omit<Template, 'id' | 'created_at'>): Promise<number> {
-    if (!this.db) throw new Error('Database not connected')
-    const result = await this.db.execute(
-      'INSERT INTO templates (name, description, default_platform, default_hashtags, default_description) VALUES (?, ?, ?, ?, ?)',
-      [templateData.name, templateData.description, templateData.default_platform, templateData.default_hashtags, templateData.default_description]
-    )
-    return result.lastInsertId ?? 0
-  }
-  
-  async deleteTemplate(id: number): Promise<void> {
-    if (!this.db) throw new Error('Database not connected')
-    await this.db.execute('DELETE FROM templates WHERE id = ?', [id])
-  }
-  
-  async getTrendingItems(): Promise<any[]> {
-    if (!this.db) throw new Error('Database not connected')
-    const rows: any[] = await this.db.select('SELECT * FROM trending_cache ORDER BY avg_engagement DESC, popularity_score DESC')
-    return rows.map((row: any) => ({
-      ...row,
-      top_posts: row.top_posts_json ? JSON.parse(row.top_posts_json) : []
-    }))
-  }
-  
-  async getLastTrendingUpdate(): Promise<string | null> {
-    if (!this.db) throw new Error('Database not connected')
-    const result: any[] = await this.db.select('SELECT MAX(fetched_at) as last_update FROM trending_cache')
-    return result[0]?.last_update || null
-  }
-  
-  async clearTrendingCache(): Promise<void> {
-    if (!this.db) throw new Error('Database not connected')
-    await this.db.execute('DELETE FROM trending_cache')
-  }
-  
-  async saveTrendingItem(item: {
-    platform: string
-    trend_type: string
-    name: string
-    popularity_score: number | null
-    video_count: number | null
-    post_count?: number | null
-    avg_engagement?: number | null
-    total_engagement?: number | null
-    suggestion_text: string | null
-    top_posts?: any[]
-  }): Promise<void> {
-    if (!this.db) throw new Error('Database not connected')
-    
     try {
-      await this.db.execute(
-        `INSERT INTO trending_cache (platform, trend_type, name, popularity_score, video_count, post_count, avg_engagement, total_engagement, suggestion_text, top_posts_json)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          item.platform,
-          item.trend_type,
-          item.name,
-          item.popularity_score,
-          item.video_count,
-          item.post_count || item.video_count,
-          item.avg_engagement,
-          item.total_engagement,
-          item.suggestion_text,
-          item.top_posts ? JSON.stringify(item.top_posts) : null,
-        ]
-      )
+      await this.db.execute(`INSERT INTO trending_cache (platform, trend_type, name, popularity_score, video_count, post_count, avg_engagement, total_engagement, suggestion_text, top_posts_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [item.platform, item.trend_type, item.name, item.popularity_score, item.video_count, item.post_count || item.video_count, item.avg_engagement, item.total_engagement, item.suggestion_text, item.top_posts ? JSON.stringify(item.top_posts) : null])
     } catch (error: any) {
-      if (error?.message?.includes('no such column') || error?.toString?.()?.includes('no such column')) {
-        await this.db.execute(
-          `INSERT INTO trending_cache (platform, trend_type, name, popularity_score, video_count, suggestion_text)
-           VALUES (?, ?, ?, ?, ?, ?)`,
-          [item.platform, item.trend_type, item.name, item.popularity_score, item.video_count, item.suggestion_text]
-        )
-      } else {
-        throw error
-      }
+      if (error?.message?.includes('no such column') || error?.toString?.()?.includes('no such column')) await this.db.execute(`INSERT INTO trending_cache (platform, trend_type, name, popularity_score, video_count, suggestion_text) VALUES (?, ?, ?, ?, ?, ?)`, [item.platform, item.trend_type, item.name, item.popularity_score, item.video_count, item.suggestion_text])
+      else throw error
     }
   }
-  
-  async saveTrendingBatch(items: {
-    platform: string
-    trend_type: string
-    name: string
-    popularity_score: number | null
-    video_count: number | null
-    post_count?: number | null
-    avg_engagement?: number | null
-    total_engagement?: number | null
-    suggestion_text: string | null
-    top_posts?: any[]
-  }[]): Promise<void> {
-    if (!this.db) throw new Error('Database not connected')
-    await this.clearTrendingCache()
-    for (const item of items) {
-      try {
-        await this.saveTrendingItem(item)
-      } catch (err) {
-        console.error(`Failed to save trend "${item.name}":`, err)
-      }
-    }
-  }
-  
-  async savePerformanceMetrics(metrics: {
-    job_id: number
-    platform: string
-    views: number
-    likes: number
-    comments: number
-    shares: number
-    engagement_rate: number
-    posted_at: string
-  }): Promise<void> {
-    if (!this.db) throw new Error('Database not connected')
-    await this.db.execute(
-      `INSERT INTO performance_metrics (job_id, platform, views, likes, comments, shares, engagement_rate, posted_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [metrics.job_id, metrics.platform, metrics.views, metrics.likes, metrics.comments, metrics.shares, metrics.engagement_rate, metrics.posted_at]
-    )
-  }
-  
-  async saveBulkPerformanceMetrics(metricsArray: Array<{
-    job_id: number
-    platform: string
-    views: number
-    likes: number
-    comments: number
-    shares: number
-    engagement_rate: number
-    posted_at: string
-  }>): Promise<void> {
-    if (!this.db) throw new Error('Database not connected')
-    for (const metrics of metricsArray) {
-      await this.db.execute(
-        `INSERT INTO performance_metrics (job_id, platform, views, likes, comments, shares, engagement_rate, posted_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [metrics.job_id, metrics.platform, metrics.views, metrics.likes, metrics.comments, metrics.shares, metrics.engagement_rate, metrics.posted_at]
-      )
-    }
-  }
-
-  async getPerformanceMetrics(jobId: number): Promise<any[]> {
-    if (!this.db) throw new Error('Database not connected')
-    return await this.db.select(
-      'SELECT * FROM performance_metrics WHERE job_id = ? ORDER BY captured_at DESC',
-      [jobId]
-    )
-  }
-  
-  async getWorkspaceMetrics(workspaceId: number, startDate?: string, endDate?: string): Promise<any[]> {
-    if (!this.db) throw new Error('Database not connected')
-    let query = `
-      SELECT pm.*, j.title as job_title, j.platform as job_platform
-      FROM performance_metrics pm
-      JOIN jobs j ON pm.job_id = j.id
-      WHERE j.workspace_id = ?
-    `
-    const params: any[] = [workspaceId]
-    if (startDate) {
-      query += ' AND pm.posted_at >= ?'
-      params.push(startDate)
-    }
-    if (endDate) {
-      query += ' AND pm.posted_at <= ?'
-      params.push(endDate)
-    }
-    query += ' ORDER BY pm.posted_at DESC'
-    return await this.db.select(query, params)
-  }
-  
-  async saveReport(report: {
-    workspace_id: number
-    title: string
-    type: string
-    start_date: string
-    end_date: string
-    metrics_json: string
-    pdf_path?: string
-  }): Promise<number> {
-    if (!this.db) throw new Error('Database not connected')
-    const result = await this.db.execute(
-      `INSERT INTO reports (workspace_id, title, type, start_date, end_date, metrics_json, pdf_path)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [report.workspace_id, report.title, report.type, report.start_date, report.end_date, report.metrics_json, report.pdf_path || null]
-    )
-    return result.lastInsertId || 0
-  }
-  
-  async getReports(workspaceId: number): Promise<any[]> {
-    if (!this.db) throw new Error('Database not connected')
-    return await this.db.select(
-      'SELECT * FROM reports WHERE workspace_id = ? ORDER BY created_at DESC',
-      [workspaceId]
-    )
-  }
-
-  async getCalendarEvents(workspaceId?: number | null, startDate?: string, endDate?: string): Promise<CalendarEvent[]> {
-    if (!this.db) throw new Error('Database not connected')
-    let query = 'SELECT * FROM calendar_events WHERE 1 = 1'
-    const params: any[] = []
-
-    if (workspaceId !== undefined && workspaceId !== null) {
-      query += ' AND (workspace_id = ? OR workspace_id IS NULL)'
-      params.push(workspaceId)
-    }
-
-    if (startDate) {
-      query += ' AND event_date >= ?'
-      params.push(startDate)
-    }
-
-    if (endDate) {
-      query += ' AND event_date <= ?'
-      params.push(endDate)
-    }
-
-    query += ' ORDER BY event_date ASC, start_time ASC, created_at ASC'
-    return await this.db.select(query, params)
-  }
-
-  async createCalendarEvent(event: Omit<CalendarEvent, 'id' | 'created_at' | 'updated_at'>): Promise<number> {
-    if (!this.db) throw new Error('Database not connected')
-    const result = await this.db.execute(
-      `INSERT INTO calendar_events (workspace_id, title, description, event_date, end_date, start_time, end_time, category, location, color, recurrence, source, external_url, linked_job_id, metadata_json)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        event.workspace_id,
-        event.title,
-        event.description,
-        event.event_date,
-        event.end_date,
-        event.start_time,
-        event.end_time,
-        event.category,
-        event.location,
-        event.color ?? null,
-        event.recurrence ?? 'none',
-        event.source,
-        event.external_url,
-        event.linked_job_id,
-        event.metadata_json,
-      ]
-    )
-    return result.lastInsertId ?? 0
-  }
-
-  async updateCalendarEvent(id: number, updates: Partial<CalendarEvent>): Promise<void> {
-    if (!this.db) throw new Error('Database not connected')
-    const processedUpdates = { ...updates }
-    delete (processedUpdates as any).id
-    delete (processedUpdates as any).created_at
-    delete (processedUpdates as any).updated_at
-    const fields = Object.keys(processedUpdates).map(key => `${key} = ?`).join(', ')
-    const values = Object.values(processedUpdates)
-    if (!fields) return
-    await this.db.execute(`UPDATE calendar_events SET ${fields}, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [...values, id])
-  }
-
-  async deleteCalendarEvent(id: number): Promise<void> {
-    if (!this.db) throw new Error('Database not connected')
-    await this.db.execute('DELETE FROM calendar_events WHERE id = ?', [id])
-  }
-  
-  async getSettings(key: string): Promise<any | null> {
-    if (!this.db) throw new Error('Database not connected')
-    const result: any[] = await this.db.select(
-      'SELECT value_json FROM settings WHERE key = ?',
-      [key]
-    )
-    if (result.length > 0) {
-      try {
-        return JSON.parse(result[0].value_json)
-      } catch {
-        return null
-      }
-    }
-    return null
-  }
-  
-  async saveSettings(key: string, value: any): Promise<void> {
-    if (!this.db) throw new Error('Database not connected')
-    await this.db.execute(
-      `INSERT INTO settings (key, value_json, updated_at) 
-       VALUES (?, ?, CURRENT_TIMESTAMP)
-       ON CONFLICT(key) DO UPDATE SET 
-       value_json = excluded.value_json,
-       updated_at = excluded.updated_at`,
-      [key, JSON.stringify(value)]
-    )
-  }
-  
-  async getApiKeys(): Promise<{ youtube: string; apify: string; moonshot: string }> {
-    const keys = await this.getSettings('api_keys')
-    return {
-      youtube: keys?.youtube || '',
-      apify: keys?.apify || '',
-      moonshot: keys?.moonshot || ''
-    }
-  }
-  
-  async getWorkspaceColumns(workspaceId: number): Promise<WorkspaceColumn[]> {
-    if (!this.db) throw new Error('Database not connected')
-    await this.ensureDefaultColumnsForWorkspace(workspaceId)
-    return await this.db.select(
-      'SELECT * FROM workspace_columns WHERE workspace_id = ? ORDER BY sort_order ASC',
-      [workspaceId]
-    )
-  }
-  
-  async createWorkspaceColumn(workspaceId: number, columnId: string, title: string, color: string, sortOrder: number): Promise<number> {
-    if (!this.db) throw new Error('Database not connected')
-    const result = await this.db.execute(
-      `INSERT INTO workspace_columns (workspace_id, column_id, title, color, sort_order, is_default)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [workspaceId, columnId, title, color, sortOrder, 0]
-    )
-    return result.lastInsertId ?? 0
-  }
-  
-  async updateWorkspaceColumn(id: number, updates: Partial<WorkspaceColumn>): Promise<void> {
-    if (!this.db) throw new Error('Database not connected')
-    const fields = Object.keys(updates).map(key => `${key} = ?`).join(', ')
-    const values = Object.values(updates)
-    await this.db.execute(`UPDATE workspace_columns SET ${fields} WHERE id = ?`, [...values, id])
-  }
-  
-  async deleteWorkspaceColumn(id: number): Promise<void> {
-    if (!this.db) throw new Error('Database not connected')
-    await this.db.execute('DELETE FROM workspace_columns WHERE id = ?', [id])
-  }
-  
-  async reorderWorkspaceColumns(orderedIds: number[]): Promise<void> {
-    if (!this.db) throw new Error('Database not connected')
-    for (let i = 0; i < orderedIds.length; i++) {
-      await this.db.execute('UPDATE workspace_columns SET sort_order = ? WHERE id = ?', [i, orderedIds[i]])
-    }
-  }
-  
-  async getColumnJobCount(columnId: string, workspaceId: number): Promise<number> {
-    if (!this.db) throw new Error('Database not connected')
-    const result: any[] = await this.db.select(
-      'SELECT COUNT(*) as count FROM jobs WHERE stage = ? AND workspace_id = ?',
-      [columnId, workspaceId]
-    )
-    return result[0]?.count || 0
-  }
+  async saveTrendingBatch(items: { platform: string; trend_type: string; name: string; popularity_score: number | null; video_count: number | null; post_count?: number | null; avg_engagement?: number | null; total_engagement?: number | null; suggestion_text: string | null; top_posts?: any[] }[]): Promise<void> { if (!this.db) throw new Error('Database not connected'); await this.clearTrendingCache(); for (const item of items) { try { await this.saveTrendingItem(item) } catch (err) { console.error(`Failed to save trend "${item.name}":`, err) } } }
+  async savePerformanceMetrics(metrics: { job_id: number; platform: string; views: number; likes: number; comments: number; shares: number; engagement_rate: number; posted_at: string }): Promise<void> { if (!this.db) throw new Error('Database not connected'); await this.db.execute(`INSERT INTO performance_metrics (job_id, platform, views, likes, comments, shares, engagement_rate, posted_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, [metrics.job_id, metrics.platform, metrics.views, metrics.likes, metrics.comments, metrics.shares, metrics.engagement_rate, metrics.posted_at]) }
+  async saveBulkPerformanceMetrics(metricsArray: Array<{ job_id: number; platform: string; views: number; likes: number; comments: number; shares: number; engagement_rate: number; posted_at: string }>): Promise<void> { if (!this.db) throw new Error('Database not connected'); for (const metrics of metricsArray) await this.db.execute(`INSERT INTO performance_metrics (job_id, platform, views, likes, comments, shares, engagement_rate, posted_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, [metrics.job_id, metrics.platform, metrics.views, metrics.likes, metrics.comments, metrics.shares, metrics.engagement_rate, metrics.posted_at]) }
+  async getPerformanceMetrics(jobId: number): Promise<any[]> { if (!this.db) throw new Error('Database not connected'); return await this.db.select('SELECT * FROM performance_metrics WHERE job_id = ? ORDER BY captured_at DESC', [jobId]) }
+  async getWorkspaceMetrics(workspaceId: number, startDate?: string, endDate?: string): Promise<any[]> { if (!this.db) throw new Error('Database not connected'); let query = `SELECT pm.*, j.title as job_title, j.platform as job_platform FROM performance_metrics pm JOIN jobs j ON pm.job_id = j.id WHERE j.workspace_id = ?`; const params: any[] = [workspaceId]; if (startDate) { query += ' AND pm.posted_at >= ?'; params.push(startDate) } if (endDate) { query += ' AND pm.posted_at <= ?'; params.push(endDate) } query += ' ORDER BY pm.posted_at DESC'; return await this.db.select(query, params) }
+  async saveReport(report: { workspace_id: number; title: string; type: string; start_date: string; end_date: string; metrics_json: string; pdf_path?: string }): Promise<number> { if (!this.db) throw new Error('Database not connected'); const result = await this.db.execute(`INSERT INTO reports (workspace_id, title, type, start_date, end_date, metrics_json, pdf_path) VALUES (?, ?, ?, ?, ?, ?, ?)`, [report.workspace_id, report.title, report.type, report.start_date, report.end_date, report.metrics_json, report.pdf_path || null]); return result.lastInsertId || 0 }
+  async getReports(workspaceId: number): Promise<any[]> { if (!this.db) throw new Error('Database not connected'); return await this.db.select('SELECT * FROM reports WHERE workspace_id = ? ORDER BY created_at DESC', [workspaceId]) }
+  async getCalendarEvents(workspaceId?: number | null, startDate?: string, endDate?: string): Promise<CalendarEvent[]> { if (!this.db) throw new Error('Database not connected'); let query = 'SELECT * FROM calendar_events WHERE 1 = 1'; const params: any[] = []; if (workspaceId !== undefined && workspaceId !== null) { query += ' AND (workspace_id = ? OR workspace_id IS NULL)'; params.push(workspaceId) } if (startDate) { query += ' AND event_date >= ?'; params.push(startDate) } if (endDate) { query += ' AND event_date <= ?'; params.push(endDate) } query += ' ORDER BY event_date ASC, start_time ASC, created_at ASC'; return await this.db.select(query, params) }
+  async createCalendarEvent(event: Omit<CalendarEvent, 'id' | 'created_at' | 'updated_at'>): Promise<number> { if (!this.db) throw new Error('Database not connected'); const result = await this.db.execute(`INSERT INTO calendar_events (workspace_id, title, description, event_date, end_date, start_time, end_time, category, location, color, recurrence, source, external_url, linked_job_id, metadata_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [event.workspace_id, event.title, event.description, event.event_date, event.end_date, event.start_time, event.end_time, event.category, event.location, event.color ?? null, event.recurrence ?? 'none', event.source, event.external_url, event.linked_job_id, event.metadata_json]); return result.lastInsertId ?? 0 }
+  async updateCalendarEvent(id: number, updates: Partial<CalendarEvent>): Promise<void> { if (!this.db) throw new Error('Database not connected'); const processedUpdates = { ...updates }; delete (processedUpdates as any).id; delete (processedUpdates as any).created_at; delete (processedUpdates as any).updated_at; const fields = Object.keys(processedUpdates).map(key => `${key} = ?`).join(', '); const values = Object.values(processedUpdates); if (!fields) return; await this.db.execute(`UPDATE calendar_events SET ${fields}, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [...values, id]) }
+  async deleteCalendarEvent(id: number): Promise<void> { if (!this.db) throw new Error('Database not connected'); await this.db.execute('DELETE FROM calendar_events WHERE id = ?', [id]) }
+  async getSettings(key: string): Promise<any | null> { if (!this.db) throw new Error('Database not connected'); const result: any[] = await this.db.select('SELECT value_json FROM settings WHERE key = ?', [key]); if (result.length > 0) { try { return JSON.parse(result[0].value_json) } catch { return null } } return null }
+  async saveSettings(key: string, value: any): Promise<void> { if (!this.db) throw new Error('Database not connected'); await this.db.execute(`INSERT INTO settings (key, value_json, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP) ON CONFLICT(key) DO UPDATE SET value_json = excluded.value_json, updated_at = excluded.updated_at`, [key, JSON.stringify(value)]) }
+  async getApiKeys(): Promise<{ youtube: string; apify: string; moonshot: string }> { const keys = await this.getSettings('api_keys'); return { youtube: keys?.youtube || '', apify: keys?.apify || '', moonshot: keys?.moonshot || '' } }
+  async getWorkspaceColumns(workspaceId: number): Promise<WorkspaceColumn[]> { if (!this.db) throw new Error('Database not connected'); await this.ensureDefaultColumnsForWorkspace(workspaceId); return await this.db.select('SELECT * FROM workspace_columns WHERE workspace_id = ? ORDER BY sort_order ASC', [workspaceId]) }
+  async createWorkspaceColumn(workspaceId: number, columnId: string, title: string, color: string, sortOrder: number, backgroundColor?: string | null): Promise<number> { if (!this.db) throw new Error('Database not connected'); const result = await this.db.execute(`INSERT INTO workspace_columns (workspace_id, column_id, title, color, background_color, sort_order, is_default) VALUES (?, ?, ?, ?, ?, ?, ?)`, [workspaceId, columnId, title, color, backgroundColor ?? this.mapColumnBackgroundColor(color), sortOrder, 0]); return result.lastInsertId ?? 0 }
+  async updateWorkspaceColumn(id: number, updates: Partial<WorkspaceColumn>): Promise<void> { if (!this.db) throw new Error('Database not connected'); const fields = Object.keys(updates).map(key => `${key} = ?`).join(', '); const values = Object.values(updates); await this.db.execute(`UPDATE workspace_columns SET ${fields} WHERE id = ?`, [...values, id]) }
+  async deleteWorkspaceColumn(id: number): Promise<void> { if (!this.db) throw new Error('Database not connected'); await this.db.execute('DELETE FROM workspace_columns WHERE id = ?', [id]) }
+  async reorderWorkspaceColumns(orderedIds: number[]): Promise<void> { if (!this.db) throw new Error('Database not connected'); for (let i = 0; i < orderedIds.length; i++) await this.db.execute('UPDATE workspace_columns SET sort_order = ? WHERE id = ?', [i, orderedIds[i]]) }
+  async getColumnJobCount(columnId: string, workspaceId: number): Promise<number> { if (!this.db) throw new Error('Database not connected'); const result: any[] = await this.db.select('SELECT COUNT(*) as count FROM jobs WHERE stage = ? AND workspace_id = ?', [columnId, workspaceId]); return result[0]?.count || 0 }
 }
 
 export const dbService = new DatabaseService()
